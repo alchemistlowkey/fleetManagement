@@ -23,9 +23,9 @@ export async function POST({ request, cookies }) {
 			return json({ success: false, message: 'Invalid credentials' }, { status: 401 });
 		}
 
-		if (!user.isAccountVerified) {
-			return json({ success: false, message: 'Please verify your email first' }, { status: 403 });
-		}
+		// if (!user.isAccountVerified) {
+		// 	return json({ success: false, message: 'Please verify your email first' }, { status: 403 });
+		// }
 
 		// Generate JWT
 		const token = jwt.sign(
@@ -49,7 +49,8 @@ export async function POST({ request, cookies }) {
 				name: user.name,
 				email: user.email,
 				role: user.role,
-				token
+				token,
+				isAccountVerified: user.isAccountVerified || false
 			},
 			{ status: 200 }
 		);

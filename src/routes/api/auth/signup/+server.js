@@ -1,19 +1,9 @@
 import { json } from '@sveltejs/kit';
 import User from '$lib/models/User';
 import bcrypt from 'bcrypt';
-import nodemailer from 'nodemailer';
-
-function generateOtp() {
-	return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
-}
-
-const transporter = nodemailer.createTransport({
-	service: 'gmail',
-	auth: {
-		user: process.env.EMAIL_USER,
-		pass: process.env.EMAIL_PASS
-	}
-});
+import { EMAIL_VERIFY_TEMPLATE } from '$lib/config/emailTemplates.js';
+import { generateOtp } from '$lib/config/generateOtp.js';
+import { transporter } from '$lib/config/transporter.js';
 
 export async function POST({ request }) {
 	try {
@@ -34,7 +24,7 @@ export async function POST({ request }) {
 		const hashedPassword = await bcrypt.hash(password, 10);
 
 		const otp = generateOtp();
-		const otpExpireAt = new Date(Date.now() + 10 * 60 * 1000);
+		const otpExpireAt = new Date(Date.now() + 1 * 60 * 1000);
 
 		// Create new user
 		const user = new User({
@@ -53,7 +43,8 @@ export async function POST({ request }) {
 			from: process.env.EMAIL_USER,
 			to: email,
 			subject: 'Verify Your Email',
-			text: `Your OTP is ${otp}. It expires in 10 minutes.`
+			// text: `Your OTP is ${otp}. It expires in 4 minutes.`,
+			html: EMAIL_VERIFY_TEMPLATE.replace('{{otp}}', otp).replace('{{email}}', email)
 		});
 
 		console.log(`Sending OTP ${otp} to ${email}`);

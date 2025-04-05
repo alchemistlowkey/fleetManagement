@@ -27,7 +27,17 @@ export async function POST({ request }) {
 		user.verifyOtpExpireAt = null;
 		await user.save();
 
-		return json({ success: true, message: 'Email verified! Please log in.' }, { status: 200 });
+		return json(
+			{
+				success: true,
+				message: 'Email verified! Please log in.',
+				id: user._id,
+				name: user.name,
+				email: user.email,
+				role: user.role
+			},
+			{ status: 200 }
+		);
 	} catch (err) {
 		return json(
 			{ success: false, message: 'Verification failed', details: err.message },
