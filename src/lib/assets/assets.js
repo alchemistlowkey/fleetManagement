@@ -23,6 +23,10 @@ import password_icon from './password.svg';
 import eye_icon from './eye.svg';
 import eye_slash_icon from './eye_slash.svg';
 import logout_icon from './logout.svg';
+import vehicle_icon from './vehicle.svg';
+import driver_icon from './driver.svg';
+import vehicle_add_icon from './addVehicle.svg';
+import trip_icon from './trip.svg';
 
 export const assets = {
 	dropdown_icon,
@@ -49,5 +53,9 @@ export const assets = {
 	password_icon,
 	eye_icon,
 	eye_slash_icon,
-	logout_icon
+	logout_icon,
+	vehicle_icon,
+	driver_icon,
+	vehicle_add_icon,
+	trip_icon
 };

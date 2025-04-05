@@ -92,7 +92,7 @@
 </script>
 
 {#if !userState.isLoggedIn}
-	<div class="mx-auto my-40 w-sm items-center justify-center rounded-lg bg-white p-6 shadow">
+	<div class="mx-auto my-40 max-w-sm items-center justify-center rounded-lg bg-white p-6 shadow">
 		{#if isVerifying}
 			<!-- OTP Verification -->
 			<h2 class="mb-4 text-center text-xl font-bold">Verify Email</h2>

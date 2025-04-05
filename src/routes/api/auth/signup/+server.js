@@ -1,10 +1,19 @@
 import { json } from '@sveltejs/kit';
 import User from '$lib/models/User';
 import bcrypt from 'bcrypt';
+import nodemailer from 'nodemailer';
 
 function generateOtp() {
 	return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
 }
+
+const transporter = nodemailer.createTransport({
+	service: 'gmail',
+	auth: {
+		user: process.env.EMAIL_USER,
+		pass: process.env.EMAIL_PASS
+	}
+});
 
 export async function POST({ request }) {
 	try {
@@ -39,6 +48,13 @@ export async function POST({ request }) {
 		});
 
 		await user.save();
+
+		await transporter.sendMail({
+			from: process.env.EMAIL_USER,
+			to: email,
+			subject: 'Verify Your Email',
+			text: `Your OTP is ${otp}. It expires in 10 minutes.`
+		});
 
 		console.log(`Sending OTP ${otp} to ${email}`);
 

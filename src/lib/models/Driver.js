@@ -2,9 +2,9 @@ import mongoose from 'mongoose';
 
 const driverSchema = new mongoose.Schema(
 	{
-		name: { type: String, required: true },
-		email: { type: String, required: true, unique: true },
-		phone: { type: String, required: true, match: /^\+?[1-9]\d{1,14}$/ },
+		driverName: { type: String, required: true },
+		driverEmail: { type: String, required: true, unique: true },
+		phone: { type: String, required: true },
 		licenseNumber: { type: String, required: true, unique: true },
 		assignedVehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', default: null },
 		status: { type: String, enum: ['active', 'inactive', 'suspended'], default: 'active' },

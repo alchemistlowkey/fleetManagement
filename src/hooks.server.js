@@ -1,5 +1,9 @@
+/* eslint-disable no-unused-vars */
 import connectDB from '$lib/config/mongodb';
 import jwt from 'jsonwebtoken';
+import Driver from '$lib/models/Driver';
+import Vehicle from '$lib/models/Vehicle';
+import Trip from '$lib/models/Trip';
 
 let dbConnected = false;
 

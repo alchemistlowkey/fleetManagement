@@ -44,7 +44,7 @@
 	}
 </script>
 
-<div class="container mx-auto p-6">
+<div class="mx-auto max-w-md py-10">
 	<h1 class="mb-6 text-3xl font-bold">Add Vehicle</h1>
 	<form onsubmit={addVehicle} class="max-w-md space-y-4">
 		<div>
