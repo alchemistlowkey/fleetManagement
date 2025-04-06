@@ -131,7 +131,7 @@
 					alt="user icon"
 					class="max-w-6 p-1 sm:p-2 md:max-w-8"
 				/>
-				<p class="hidden md:block">Login</p>
+				<p class="hidden md:block md:px-1">Login</p>
 			</a>
 		{/if}
 

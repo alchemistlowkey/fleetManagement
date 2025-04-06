@@ -31,11 +31,7 @@
 			});
 
 			if (data.success) {
-				toast.promise({
-					loading: 'Saving...',
-					success: 'Vehicle added successfully',
-					error: 'Failed to add vehicle'
-				});
+				toast.success('Vehicle added successfully');
 				goto('/vehicles');
 			} else {
 				toast.error(data.message);

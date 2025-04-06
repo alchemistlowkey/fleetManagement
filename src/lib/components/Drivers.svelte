@@ -50,8 +50,8 @@
 		<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 			{#each drivers as driver (driver._id)}
 				<div class="rounded-lg bg-white p-4 shadow-md transition-shadow hover:shadow-lg">
-					<h2 class="text-xl font-semibold text-blue-600">{driver.name}</h2>
-					<p class="text-gray-700">Email: {driver.email}</p>
+					<h2 class="text-xl font-semibold text-blue-600">{driver.driverName}</h2>
+					<p class="text-gray-700">Email: {driver.driverEmail}</p>
 					<p class="text-gray-700">Phone: {driver.phone}</p>
 					<p class="text-gray-700">License: {driver.licenseNumber}</p>
 					<p class="text-gray-700">
