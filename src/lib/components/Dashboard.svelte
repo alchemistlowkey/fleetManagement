@@ -222,11 +222,12 @@
 				type="text"
 				bind:value={searchQuery}
 				placeholder="Search drivers or vehicles..."
-				class="w-full rounded-lg border border-amber-400 shadow-md p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+				class="w-full rounded-lg border border-amber-400 p-2 shadow-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
 			/>
 		</div>
 
 		<!-- Stats Overview -->
+
 		<div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
 			<button
 				class="cursor-pointer rounded-lg border border-amber-400 bg-white p-6 shadow-md transition-all hover:scale-105"
@@ -252,10 +253,10 @@
 				<p class="mt-2 text-3xl font-bold text-gray-700">{stats.activeTrips}</p>
 				<p class="text-sm text-gray-500">Recent: {recentTrips.length}</p>
 			</button>
-			<div class="rounded-lg border border-amber-400 bg-white p-6 shadow-md">
-				<h2 class="text-xl font-semibold text-blue-600">Quick Actions</h2>
-				<div class="mt-2 space-y-2">
-					{#if userState.role === 'Admin'}
+			{#if userState.role === 'Admin'}
+				<div class="rounded-lg border border-amber-400 bg-white p-6 shadow-md">
+					<h2 class="text-xl font-semibold text-blue-600">Quick Actions</h2>
+					<div class="mt-2 space-y-2">
 						<button
 							onclick={() => navigateTo('/drivers/add')}
 							class="w-full rounded bg-sky-400 p-2 text-white hover:bg-lime-800"
@@ -268,9 +269,9 @@
 						>
 							Add Vehicle
 						</button>
-					{/if}
+					</div>
 				</div>
-			</div>
+			{/if}
 		</div>
 
 		<!-- Main Content Grid -->
@@ -369,7 +370,7 @@
 								<strong>From:</strong>
 								{trip.startAddress || 'Loading address...'}
 							</p>
-							<p class="text-sm text-fuchsia-700 my-2">
+							<p class="my-2 text-sm text-fuchsia-700">
 								<strong>To:</strong>
 								{trip.endAddress || 'Loading address...'}
 							</p>
@@ -393,12 +394,11 @@
 						</div>
 					{/each}
 				</div>
-                <div class="flex justify-center">
-
-                    <button onclick={() => navigateTo('/trips')} class="mt-4 text-blue-600 hover:underline">
-                        View All Trips
-                    </button>
-                </div>
+				<div class="flex justify-center">
+					<button onclick={() => navigateTo('/trips')} class="mt-4 text-blue-600 hover:underline">
+						View All Trips
+					</button>
+				</div>
 			{/if}
 		</div>
 	{/if}
