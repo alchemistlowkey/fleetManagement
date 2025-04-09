@@ -14,6 +14,9 @@
 		fuelType: 'petrol'
 	});
 
+	const currentYear = new Date().getFullYear();
+	const years = Array.from({ length: currentYear - 1960 + 1 }, (_, i) => currentYear - i);
+
 	$effect(() => {
 		if (!userState.isLoggedIn || userState.role !== 'Admin') {
 			toast.error('You must be an Admin to access this page');
@@ -66,7 +69,12 @@
 		</div>
 		<div>
 			<label for="year" class="block text-sm font-medium">Year</label>
-			<input bind:value={formData.year} type="number" class="w-full rounded border p-2" required />
+			<select bind:value={formData.year} class="w-full rounded border p-2" required>
+				<option value="" disabled selected>Select a year</option>
+				{#each years as year}
+					<option value={year}>{year}</option>
+				{/each}
+			</select>
 		</div>
 		<div>
 			<label for="vin" class="block text-sm font-medium">VIN</label>

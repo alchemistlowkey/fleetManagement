@@ -27,12 +27,22 @@
 	let directionsService = null;
 	let directionsRenderer = null;
 
+	const now = new Date();
+	const todayMin = $state(new Date(now.setSeconds(0, 0)).toISOString().slice(0, 16));
+
 	$effect(() => {
 		if (!userState.isLoggedIn || userState.role !== 'Admin') {
 			toast.error('You must be an Admin to access this page');
 			goto('/login');
 		} else {
 			fetchVehiclesAndDrivers();
+		}
+	});
+
+	// Ensure endTime is not before startTime
+	$effect(() => {
+		if (formData.startTime && formData.endTime && formData.endTime < formData.startTime) {
+			formData.endTime = formData.startTime; // Reset endTime if it's before startTime
 		}
 	});
 
@@ -291,6 +301,7 @@
 			<input
 				id="startTime"
 				bind:value={formData.startTime}
+				min={todayMin}
 				type="datetime-local"
 				class="w-full rounded border p-2"
 				required
@@ -301,6 +312,7 @@
 			<input
 				id="endTime"
 				bind:value={formData.endTime}
+				min={formData.startTime || todayMin}
 				type="datetime-local"
 				class="w-full rounded border p-2"
 				required

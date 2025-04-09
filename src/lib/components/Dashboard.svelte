@@ -293,7 +293,7 @@
 								</div>
 								{#if userState.role === 'Admin'}
 									<button
-										onclick={() => navigateTo(`/vehicles/edit/${vehicle._id}`)}
+										onclick={() => navigateTo(`/vehicles`)}
 										class="text-sky-400 hover:text-lime-800"
 									>
 										Assign
