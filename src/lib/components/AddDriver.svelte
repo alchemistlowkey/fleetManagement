@@ -4,7 +4,7 @@
 	import toast from 'svelte-french-toast';
 	import { goto } from '$app/navigation';
 
-	const { userState } = getContext('userState');
+	const { appState } = getContext('appState');
 	let formData = $state({
 		driverName: '',
 		driverEmail: '',
@@ -13,10 +13,8 @@
 		status: 'active'
 	});
 
-	let isLoading = $state(false);
-
 	$effect(() => {
-		if (!userState.isLoggedIn || userState.role !== 'Admin') {
+		if (!appState.user.isLoggedIn || appState.user.role !== 'Admin') {
 			toast.error('You must be an Admin to access this page');
 			goto('/login');
 		}
@@ -28,7 +26,7 @@
 
 		try {
 			const { data } = await axios.post('/api/drivers', formData, {
-				headers: { Authorization: `Bearer ${userState.token}` }
+				headers: { Authorization: `Bearer ${appState.user.token}` }
 			});
 
 			if (data.success) {
@@ -100,9 +98,9 @@
 		<button
 			type="submit"
 			class="w-full rounded bg-black p-2 text-white hover:bg-lime-700 disabled:opacity-50"
-			disabled={isLoading}
+			disabled={appState.user.isLoading}
 		>
-			{#if isLoading}
+			{#if appState.user.isLoading}
 				<div class="flex items-center justify-center">
 					<div
 						class="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-orange-300"

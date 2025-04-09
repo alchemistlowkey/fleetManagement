@@ -5,14 +5,14 @@
 	import { goto } from '$app/navigation';
 	import { assets } from '$lib/assets/assets';
 
-	const { userState } = getContext('userState');
+	const { appState } = getContext('appState');
 	let vehicles = $state([]);
 	let drivers = $state([]);
 	let selectedDrivers = $state({});
 	let assigning = $state({});
 
 	$effect(() => {
-		if (!userState.isLoggedIn) {
+		if (!appState.user.isLoggedIn) {
 			toast.error('Please log in to view vehicles');
 			goto('/login');
 		} else {
@@ -22,10 +22,10 @@
 	});
 
 	async function fetchVehicles() {
-		userState.isLoading = true;
+		appState.user.isLoading = true;
 		try {
 			const { data } = await axios.get('/api/vehicles', {
-				headers: { Authorization: `Bearer ${userState.token}` }
+				headers: { Authorization: `Bearer ${appState.user.token}` }
 			});
 			if (data.success) {
 				vehicles = data.vehicles;
@@ -39,14 +39,14 @@
 		} catch (error) {
 			toast.error(error.response?.data?.message || 'Failed to fetch vehicles');
 		} finally {
-			userState.isLoading = false;
+			appState.user.isLoading = false;
 		}
 	}
 
 	async function fetchDrivers() {
 		try {
 			const { data } = await axios.get('/api/drivers', {
-				headers: { Authorization: `Bearer ${userState.token}` }
+				headers: { Authorization: `Bearer ${appState.user.token}` }
 			});
 			if (data.success) {
 				drivers = data.drivers;
@@ -65,7 +65,7 @@
 			const { data } = await axios.put(
 				`/api/vehicles/${vehicleId}/assign-driver`,
 				{ driverId: driverId || null },
-				{ headers: { Authorization: `Bearer ${userState.token}` } }
+				{ headers: { Authorization: `Bearer ${appState.user.token}` } }
 			);
 			if (data.success) {
 				toast.success('Driver assigned successfully');
@@ -84,7 +84,7 @@
 		if (!confirm('Are you sure you want to delete this vehicle?')) return;
 		try {
 			const { data } = await axios.delete(`/api/vehicles/${id}`, {
-				headers: { Authorization: `Bearer ${userState.token}` }
+				headers: { Authorization: `Bearer ${appState.user.token}` }
 			});
 			if (data.success) {
 				toast.success('Vehicle deleted successfully');
@@ -103,7 +103,7 @@
 
 <div class="container mx-auto p-6">
 	<h1 class="mb-6 text-3xl font-bold text-gray-800">Vehicles</h1>
-	{#if userState.isLoading}
+	{#if appState.user.isLoading}
 		<div class="flex justify-center">
 			<div
 				class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-500"
@@ -127,7 +127,7 @@
 						<strong>Driver:</strong>
 						{vehicle.assignedDriver ? vehicle.assignedDriver.driverName : 'Unassigned'}
 					</p>
-					{#if userState.role === 'Admin'}
+					{#if appState.user.role === 'Admin'}
 						<div class="mt-2">
 							<div class="relative">
 								<select

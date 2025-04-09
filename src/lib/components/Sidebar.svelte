@@ -6,7 +6,7 @@
 	import toast from 'svelte-french-toast';
 	import { assets } from '$lib/assets/assets';
 
-	const { userState, resetUserState } = getContext('userState');
+	const { appState, resetUserState } = getContext('appState');
 
 	function logout() {
 		resetUserState();
@@ -33,7 +33,7 @@
 				<p class="hidden pe-1 md:block">Dashboard</p>
 			</a>
 
-			{#if userState.role === 'Admin'}
+			{#if appState.user.role === 'Admin'}
 				<a
 					href="/vehicles/add"
 					class="flex items-center gap-2 rounded transition-all"
@@ -43,8 +43,7 @@
 					<img src={assets.vehicle_add_icon} alt="add icon" class="max-w-6 p-1 sm:p-2 md:max-w-8" />
 					<p class="hidden md:block">Add Vehicle</p>
 				</a>
-			{/if}
-			{#if userState.role === 'Admin'}
+
 				<a
 					href="/drivers/add"
 					class="flex items-center gap-2 rounded transition-all"
@@ -54,9 +53,6 @@
 					<img src={assets.driver_add_icon} alt="add icon" class="max-w-6 p-1 sm:p-2 md:max-w-8" />
 					<p class="hidden md:block">Add Driver</p>
 				</a>
-			{/if}
-
-			{#if userState.role === 'Admin'}
 				<a
 					href="/trips/add"
 					class="flex items-center gap-2 rounded transition-all"
@@ -99,19 +95,19 @@
 		</nav>
 	</div>
 	<div class="mt-auto flex flex-col gap-2">
-		{#if userState.isLoggedIn}
+		{#if appState.user.isLoggedIn}
 			<div class="flex items-center justify-center gap-2 rounded px-1 transition-all">
 				<div
 					class="flex h-4 w-4 items-center justify-center rounded-full bg-black p-1 text-white sm:p-2 md:h-8 md:w-8"
 				>
-					{#if userState.name}
-						{userState.name[0].toUpperCase()}
+					{#if appState.user.name}
+						{appState.user.name[0].toUpperCase()}
 					{:else}
 						?
 					{/if}
 				</div>
 			</div>
-			<p class="mx-auto text-[8px] text-gray-300 md:text-xs">({userState.role})</p>
+			<p class="mx-auto text-[8px] text-gray-300 md:text-xs">({appState.user.role})</p>
 			<button
 				onclick={logout}
 				class="flex cursor-pointer items-center gap-2 rounded transition-all"

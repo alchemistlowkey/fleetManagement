@@ -4,11 +4,10 @@
 	import toast from 'svelte-french-toast';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { getGoogleMapsLoader } from '$lib/config/google-maps';
 
-	const { userState } = getContext('userState');
+	const { appState } = getContext('appState');
 
 	let formData = $state({
 		vehicle: '',
@@ -20,8 +19,6 @@
 		endTime: '',
 		status: 'scheduled'
 	});
-	let vehicles = $state([]);
-	let drivers = $state([]);
 	let map = null;
 	let startMarker = null;
 	let endMarker = null;
@@ -30,56 +27,56 @@
 	let mapInitialized = $state(false);
 
 	$effect(() => {
-		if (!userState.isLoggedIn || userState.role !== 'Admin') {
+		if (!appState.user.isLoggedIn || appState.user.role !== 'Admin') {
 			toast.error('You must be an Admin to access this page');
 			if (browser) goto('/login');
 		} else {
-			fetchTripAndOptions();
+			loadTripData();
 		}
 	});
 
-	async function fetchTripAndOptions() {
-		userState.isLoading = true;
+	async function loadTripData() {
+		appState.user.isLoading = true;
 		try {
-			const [tripResponse, vehiclesResponse, driversResponse] = await Promise.all([
-				axios.get(`/api/trips/${$page.params.id}`, {
-					headers: { Authorization: `Bearer ${userState.token}` }
-				}),
-				axios.get('/api/vehicles', { headers: { Authorization: `Bearer ${userState.token}` } }),
-				axios.get('/api/drivers', { headers: { Authorization: `Bearer ${userState.token}` } })
-			]);
-
-			if (tripResponse.data.success) {
+			const trip = appState.trips.find((t) => t._id === $page.params.id);
+			if (trip) {
 				formData = {
-					...tripResponse.data.trip,
-					startLocation: {
-						lat: tripResponse.data.trip.startLocation.lat,
-						lng: tripResponse.data.trip.startLocation.lng
-					},
-					endLocation: {
-						lat: tripResponse.data.trip.endLocation.lat,
-						lng: tripResponse.data.trip.endLocation.lng
-					},
-					distance: tripResponse.data.trip.distance || '',
-					startTime: new Date(tripResponse.data.trip.startTime).toISOString().slice(0, 16),
-					endTime: new Date(tripResponse.data.trip.endTime).toISOString().slice(0, 16)
+					...trip,
+					startLocation: { lat: trip.startLocation.lat, lng: trip.startLocation.lng },
+					endLocation: { lat: trip.endLocation.lat, lng: trip.endLocation.lng },
+					distance: trip.distance || '',
+					startTime: new Date(trip.startTime).toISOString().slice(0, 16),
+					endTime: new Date(trip.endTime).toISOString().slice(0, 16)
 				};
 			} else {
-				toast.error(tripResponse.data.message || 'Failed to load trip');
+				const { data } = await axios.get(`/api/trips/${$page.params.id}`, {
+					headers: { Authorization: `Bearer ${appState.user.token}` }
+				});
+				if (data.success) {
+					formData = {
+						...data.trip,
+						startLocation: { lat: data.trip.startLocation.lat, lng: data.trip.startLocation.lng },
+						endLocation: { lat: data.trip.endLocation.lat, lng: data.trip.endLocation.lng },
+						distance: data.trip.distance || '',
+						startTime: new Date(data.trip.startTime).toISOString().slice(0, 16),
+						endTime: new Date(data.trip.endTime).toISOString().slice(0, 16)
+					};
+					appState.trips = [...appState.trips, data.trip];
+				} else {
+					toast.error(data.message || 'Trip not found');
+				}
 			}
-			vehicles = vehiclesResponse.data.vehicles || [];
-			drivers = driversResponse.data.drivers || [];
 		} catch (error) {
-			console.error('Fetch error:', error.response?.data || error.message);
 			toast.error('Failed to load trip data');
+			console.error('Fetch error:', error);
 		} finally {
-			userState.isLoading = false;
+			appState.user.isLoading = false;
 		}
 	}
 
 	async function updateTrip(event) {
 		event.preventDefault();
-		userState.isLoading = true;
+		appState.user.isLoading = true;
 
 		const submissionData = {
 			vehicle: formData.vehicle,
@@ -100,19 +97,23 @@
 
 		try {
 			const { data } = await axios.put(`/api/trips/${$page.params.id}`, submissionData, {
-				headers: { Authorization: `Bearer ${userState.token}`, 'Content-Type': 'application/json' }
+				headers: {
+					Authorization: `Bearer ${appState.user.token}`,
+					'Content-Type': 'application/json'
+				}
 			});
 			if (data.success) {
 				toast.success('Trip updated successfully');
-				if (browser) goto('/trips');
+				appState.trips = appState.trips.map((t) => (t._id === $page.params.id ? data.trip : t));
+				goto('/trips');
 			} else {
 				toast.error(data.message || 'Failed to update trip');
 			}
 		} catch (error) {
-			console.error('Update trip error:', error.response?.data || error.message);
 			toast.error(error.response?.data?.message || 'Failed to update trip');
+			console.error('Update error:', error);
 		} finally {
-			userState.isLoading = false;
+			appState.user.isLoading = false;
 		}
 	}
 
@@ -137,8 +138,8 @@
 				const distanceInMeters = result.routes[0].legs[0].distance.value;
 				formData.distance = (distanceInMeters / 1000).toFixed(2);
 			} else {
-				console.error('Directions request failed:', status);
 				toast.error('Failed to calculate route');
+				console.error('Directions error:', status);
 			}
 		});
 	}
@@ -161,10 +162,8 @@
 				zoom: 13
 			};
 			const mapElement = document.getElementById('location-map');
-			if (!mapElement) {
-				console.error('Map element not found');
-				return;
-			}
+			if (!mapElement) return;
+
 			map = new google.maps.Map(mapElement, mapOptions);
 			directionsService = new google.maps.DirectionsService();
 			directionsRenderer = new google.maps.DirectionsRenderer();
@@ -269,19 +268,13 @@
 
 			mapInitialized = true;
 		} catch (error) {
-			console.error('Failed to load Google Maps:', error);
 			toast.error('Failed to load map');
+			console.error('Map initialization error:', error);
 		}
 	}
 
-	onMount(() => {
-		if (browser && !userState.isLoading) {
-			initializeMap();
-		}
-	});
-
 	$effect(() => {
-		if (!userState.isLoading && formData.vehicle && browser && !mapInitialized) {
+		if (!appState.user.isLoading && formData.vehicle && browser && !mapInitialized) {
 			initializeMap();
 		}
 	});
@@ -289,7 +282,7 @@
 
 <div class="mx-auto max-w-md py-10">
 	<h1 class="mb-6 text-3xl font-bold">Edit Trip</h1>
-	{#if userState.isLoading && !formData.vehicle}
+	{#if appState.user.isLoading && !formData.vehicle}
 		<div class="flex justify-center">
 			<div
 				class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-500"
@@ -306,10 +299,11 @@
 					required
 				>
 					<option value="">Select a vehicle</option>
-					{#each vehicles as vehicle}
-						<option value={vehicle._id}
-							>{vehicle.plateNumber} ({vehicle.make} {vehicle.model})</option
-						>
+					{#each appState.vehicles as vehicle}
+						<option value={vehicle._id}>
+							{vehicle.plateNumber} ({vehicle.make}
+							{vehicle.model})
+						</option>
 					{/each}
 				</select>
 			</div>
@@ -317,7 +311,7 @@
 				<label for="driver" class="block text-sm font-medium">Driver</label>
 				<select id="driver" bind:value={formData.driver} class="w-full rounded border p-2" required>
 					<option value="">Select a driver</option>
-					{#each drivers as driver}
+					{#each appState.drivers as driver}
 						<option value={driver._id}>{driver.driverName} ({driver.driverEmail})</option>
 					{/each}
 				</select>
@@ -391,9 +385,11 @@
 			<button
 				type="submit"
 				class="w-full rounded bg-black p-2 text-white hover:bg-lime-700 disabled:opacity-50"
-				disabled={userState.isLoading || !formData.startLocation.lat || !formData.endLocation.lat}
+				disabled={appState.user.isLoading ||
+					!formData.startLocation.lat ||
+					!formData.endLocation.lat}
 			>
-				{#if userState.isLoading}
+				{#if appState.user.isLoading}
 					<div class="flex items-center justify-center">
 						<div
 							class="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-orange-500"

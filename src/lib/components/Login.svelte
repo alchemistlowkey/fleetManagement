@@ -5,7 +5,7 @@
 	import axios from 'axios';
 	import toast from 'svelte-french-toast';
 
-	const { userState, resetUserState } = getContext('userState');
+	const { appState, resetUserState } = getContext('appState');
 	let otpDigits = $state(Array(6).fill(''));
 	let isVerifying = $state(false);
 	let timeLeft = $state(60); // 1 minute to match backend (adjust to 600 for 10 minutes if needed)
@@ -26,11 +26,11 @@
 	});
 
 	function togglePassword() {
-		userState.showPassword = !userState.showPassword;
+		appState.user.showPassword = !appState.user.showPassword;
 	}
 
 	function toggleSignUp() {
-		userState.isSignup = !userState.isSignup;
+		appState.user.isSignup = !appState.user.isSignup;
 		isVerifying = false;
 		timeLeft = 60;
 		timerExpired = false;
@@ -38,19 +38,19 @@
 
 	async function submitHandler(event) {
 		event.preventDefault();
-		userState.isLoading = true;
+		appState.user.isLoading = true;
 
 		try {
-			if (userState.isSignup) {
+			if (appState.user.isSignup) {
 				const { data } = await axios.post('/api/auth/signup', {
-					name: userState.name,
-					email: userState.email,
-					password: userState.password
+					name: appState.user.name,
+					email: appState.user.email,
+					password: appState.user.password
 				});
 
 				if (data.success) {
 					toast.success(data.message);
-					userState.isSignup = false;
+					appState.user.isSignup = false;
 					isVerifying = true;
 					timeLeft = 60;
 					timerExpired = false;
@@ -59,8 +59,8 @@
 				}
 			} else {
 				const { data } = await axios.post('/api/auth/login', {
-					email: userState.email,
-					password: userState.password
+					email: appState.user.email,
+					password: appState.user.password
 				});
 
 				if (data.success) {
@@ -71,12 +71,12 @@
 						timerExpired = false;
 						await resendOtp();
 					} else {
-						userState.isLoggedIn = true;
-						userState.id = data.id;
-						userState.name = data.name;
-						userState.email = data.email;
-						userState.role = data.role;
-						userState.token = data.token;
+						appState.user.isLoggedIn = true;
+						appState.user.id = data.id;
+						appState.user.name = data.name;
+						appState.user.email = data.email;
+						appState.user.role = data.role;
+						appState.user.token = data.token;
 						toast.success(data.message);
 						goto('/trips');
 					}
@@ -87,27 +87,27 @@
 		} catch (error) {
 			toast.error(error.response?.data?.message || error.message || 'An error occurred');
 		} finally {
-			userState.isLoading = false;
+			appState.user.isLoading = false;
 		}
 	}
 
 	async function verifyOtp(event) {
 		event.preventDefault();
-		userState.isLoading = true;
+		appState.user.isLoading = true;
 
 		const otp = otpDigits.join('');
 		try {
 			const { data } = await axios.post('/api/auth/verify', {
-				email: userState.email,
+				email: appState.user.email,
 				otp
 			});
 			if (data.success) {
 				toast.success(data.message);
 				otpDigits = Array(6).fill('');
 				isVerifying = false;
-				userState.email = '';
-				userState.password = '';
-				userState.name = '';
+				appState.user.email = '';
+				appState.user.password = '';
+				appState.user.name = '';
 				timeLeft = 60;
 				timerExpired = false;
 			} else {
@@ -122,15 +122,15 @@
 				timerExpired = true; // Force resend option
 			}
 		} finally {
-			userState.isLoading = false;
+			appState.user.isLoading = false;
 		}
 	}
 
 	async function resendOtp() {
-		userState.isLoading = true;
+		appState.user.isLoading = true;
 		try {
 			const { data } = await axios.post('/api/auth/resend-otp', {
-				email: userState.email
+				email: appState.user.email
 			});
 			if (data.success) {
 				toast.success('A new OTP has been sent to your email');
@@ -143,7 +143,7 @@
 		} catch (error) {
 			toast.error(error.response?.data?.message || 'Failed to resend OTP');
 		} finally {
-			userState.isLoading = false;
+			appState.user.isLoading = false;
 		}
 	}
 
@@ -164,7 +164,7 @@
 	}
 </script>
 
-{#if !userState.isLoggedIn}
+{#if !appState.user.isLoggedIn}
 	<div class="mx-auto my-40 max-w-sm items-center justify-center rounded-lg bg-white p-6 shadow">
 		{#if isVerifying}
 			<!-- OTP Verification -->
@@ -189,8 +189,8 @@
 						<br />
 						<button
 							onclick={resendOtp}
-							class="mt-2 text-blue-500 underline cursor-pointer"
-							disabled={userState.isLoading}
+							class="mt-2 cursor-pointer text-blue-500 underline"
+							disabled={appState.user.isLoading}
 						>
 							Resend OTP
 						</button>
@@ -199,9 +199,9 @@
 				<button
 					type="submit"
 					class="w-full cursor-pointer rounded bg-black p-2 text-white hover:bg-lime-800 disabled:opacity-50"
-					disabled={userState.isLoading || timerExpired}
+					disabled={appState.user.isLoading || timerExpired}
 				>
-					{#if userState.isLoading}
+					{#if appState.user.isLoading}
 						<div class="flex items-center justify-center">
 							<div
 								class="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-orange-300"
@@ -215,10 +215,10 @@
 		{:else}
 			<!-- Login/Signup Form -->
 			<h2 class="mb-4 text-center text-xl font-bold">
-				{userState.isSignup ? 'Sign Up' : 'Login'}
+				{appState.user.isSignup ? 'Sign Up' : 'Login'}
 			</h2>
 			<form onsubmit={submitHandler} class="space-y-4">
-				{#if userState.isSignup}
+				{#if appState.user.isSignup}
 					<div class="relative flex w-full items-center">
 						<img
 							src={assets.person_icon}
@@ -226,7 +226,7 @@
 							class="absolute top-1/2 left-3 w-5 -translate-y-1/2"
 						/>
 						<input
-							bind:value={userState.name}
+							bind:value={appState.user.name}
 							type="text"
 							placeholder="Name"
 							class="w-full rounded-md border bg-transparent p-2 px-10 outline-none"
@@ -241,7 +241,7 @@
 						class="absolute top-1/2 left-3 w-5 -translate-y-1/2"
 					/>
 					<input
-						bind:value={userState.email}
+						bind:value={appState.user.email}
 						type="email"
 						placeholder="Email"
 						class="w-full rounded-md border bg-transparent p-2 px-10 outline-none"
@@ -255,8 +255,8 @@
 						class="absolute top-1/2 left-3 w-5 -translate-y-1/2"
 					/>
 					<input
-						bind:value={userState.password}
-						type={userState.showPassword ? 'text' : 'password'}
+						bind:value={appState.user.password}
+						type={appState.user.showPassword ? 'text' : 'password'}
 						placeholder="Password"
 						class="w-full rounded-md border bg-transparent p-2 px-10 outline-none"
 						required
@@ -265,7 +265,7 @@
 					<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 					<img
 						onclick={togglePassword}
-						src={userState.showPassword ? assets.eye_slash_icon : assets.eye_icon}
+						src={appState.user.showPassword ? assets.eye_slash_icon : assets.eye_icon}
 						alt="password icon"
 						class="absolute top-1/2 right-3 w-5 -translate-y-1/2 cursor-pointer"
 					/>
@@ -273,29 +273,29 @@
 				<button
 					type="submit"
 					class="w-full cursor-pointer rounded bg-black p-2 text-white hover:bg-lime-800 disabled:opacity-50"
-					disabled={userState.isLoading}
+					disabled={appState.user.isLoading}
 				>
-					{#if userState.isLoading}
+					{#if appState.user.isLoading}
 						<div class="flex items-center justify-center">
 							<div
 								class="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-orange-300"
 							></div>
 						</div>
 					{:else}
-						{userState.isSignup ? 'Sign Up' : 'Login'}
+						{appState.user.isSignup ? 'Sign Up' : 'Login'}
 					{/if}
 				</button>
 			</form>
 			<p class="mt-4 text-center text-sm">
-				{userState.isSignup ? 'Already have an account?' : "Don't have an account?"}
+				{appState.user.isSignup ? 'Already have an account?' : "Don't have an account?"}
 				<button onclick={toggleSignUp} class="cursor-pointer text-blue-500 underline">
-					{userState.isSignup ? 'Login' : 'Sign Up'}
+					{appState.user.isSignup ? 'Login' : 'Sign Up'}
 				</button>
 			</p>
 		{/if}
 	</div>
 {:else}
 	<div class="mx-auto my-80 flex items-center justify-center text-center">
-		You are currently logged in as {userState.email}
+		You are currently logged in as {appState.user.email}
 	</div>
 {/if}

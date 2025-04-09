@@ -1,13 +1,9 @@
 <script>
 	import { getContext } from 'svelte';
-	import axios from 'axios';
-	import toast from 'svelte-french-toast';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { browser } from '$app/environment';
-	import { getGoogleMapsLoader } from '$lib/config/google-maps';
 
-	const { userState } = getContext('userState');
+	const { appState, fetchGlobalData, initializeTripMap } = getContext('appState');
 
 	let stats = $state({
 		totalDrivers: 0,
@@ -18,24 +14,27 @@
 	let recentTrips = $state([]);
 	let unassignedVehicles = $state([]);
 	let activeDrivers = $state([]);
-	let mapInstances = $state({});
-	let mapsReady = $state(false);
 	let searchQuery = $state('');
 	let filteredDrivers = $state([]);
 	let filteredVehicles = $state([]);
 
 	$effect(() => {
-		if (!userState.isLoggedIn) {
+		if (!appState.user.isLoggedIn) {
 			toast.error('Please log in to view dashboard');
 			goto('/login');
 		} else {
-			fetchDashboardData();
+			fetchGlobalData().then(updateDashboard);
 		}
 	});
 
 	$effect(() => {
-		if (browser && recentTrips.length > 0 && mapsReady) {
-			initializeTripMaps();
+		if (recentTrips.length > 0 && appState.mapsReady) {
+			recentTrips.forEach((trip) => {
+				const mapElement = document.getElementById(`dashboard-map-${trip._id}`);
+				if (mapElement && !appState.mapInstances[trip._id]) {
+					initializeTripMap(trip._id, mapElement);
+				}
+			});
 		}
 	});
 
@@ -43,138 +42,22 @@
 		filterData();
 	});
 
-	async function fetchDashboardData() {
-		userState.isLoading = true;
-		try {
-			const [driversRes, vehiclesRes, tripsRes] = await Promise.all([
-				axios.get('/api/drivers', { headers: { Authorization: `Bearer ${userState.token}` } }),
-				axios.get('/api/vehicles', { headers: { Authorization: `Bearer ${userState.token}` } }),
-				axios.get('/api/trips', { headers: { Authorization: `Bearer ${userState.token}` } })
-			]);
+	function updateDashboard() {
+		stats.totalDrivers = appState.drivers.length;
+		stats.totalVehicles = appState.vehicles.length;
+		stats.availableVehicles = appState.vehicles.filter((v) => !v.assignedDriver).length;
+		stats.activeTrips = appState.trips.filter((t) => t.status === 'active').length;
 
-			if (driversRes.data.success) {
-				stats.totalDrivers = driversRes.data.drivers.length;
-				activeDrivers = driversRes.data.drivers
-					.filter((d) => d.status === 'active' && d.assignedVehicle)
-					.slice(0, 5);
-				filteredDrivers = driversRes.data.drivers;
-			}
+		activeDrivers = appState.drivers
+			.filter((d) => d.status === 'active' && d.assignedVehicle)
+			.slice(0, 5);
+		unassignedVehicles = appState.vehicles.filter((v) => !v.assignedDriver).slice(0, 5);
+		recentTrips = appState.trips
+			.sort((a, b) => new Date(b.startTime) - new Date(a.startTime))
+			.slice(0, 5);
 
-			if (vehiclesRes.data.success) {
-				stats.totalVehicles = vehiclesRes.data.vehicles.length;
-				stats.availableVehicles = vehiclesRes.data.vehicles.filter((v) => !v.assignedDriver).length;
-				unassignedVehicles = vehiclesRes.data.vehicles.filter((v) => !v.assignedDriver).slice(0, 5);
-				filteredVehicles = vehiclesRes.data.vehicles;
-			}
-
-			if (tripsRes.data.success) {
-				stats.activeTrips = tripsRes.data.trips.filter((t) => t.status === 'active').length;
-				const sortedTrips = tripsRes.data.trips.sort(
-					(a, b) => new Date(b.startTime) - new Date(a.startTime)
-				);
-				recentTrips = await Promise.all(
-					sortedTrips.slice(0, 5).map(async (trip) => ({
-						...trip,
-						startAddress: await geocodeLatLng(trip.startLocation),
-						endAddress: await geocodeLatLng(trip.endLocation)
-					}))
-				);
-			}
-		} catch (error) {
-			toast.error('Failed to load dashboard data');
-			console.error(error);
-		} finally {
-			userState.isLoading = false;
-		}
-	}
-
-	async function geocodeLatLng(location) {
-		if (!browser || !location?.lat || !location?.lng) return 'Unknown Location';
-		try {
-			const loader = await getGoogleMapsLoader();
-			const google = await loader.load();
-			const geocoder = new google.maps.Geocoder();
-			return new Promise((resolve) => {
-				geocoder.geocode(
-					{ location: { lat: location.lat, lng: location.lng } },
-					(results, status) => {
-						if (status === 'OK' && results[0]) {
-							resolve(results[0].formatted_address);
-						} else {
-							resolve('Unknown Location');
-						}
-					}
-				);
-			});
-		} catch (error) {
-			console.error('Geocoding error:', error);
-			return 'Unknown Location';
-		}
-	}
-
-	async function initializeTripMaps() {
-		if (!browser || !Array.isArray(recentTrips) || recentTrips.length === 0) return;
-		const loader = await getGoogleMapsLoader();
-		if (!loader) return;
-		try {
-			const google = await loader.load();
-			recentTrips.forEach((trip) => {
-				const mapId = `dashboard-map-${trip._id}`;
-				const mapElement = document.getElementById(mapId);
-				if (!mapElement) return;
-				const map = new google.maps.Map(mapElement, {
-					center: { lat: trip.startLocation.lat, lng: trip.startLocation.lng },
-					zoom: 13,
-					disableDefaultUI: true
-				});
-				const startMarker = new google.maps.Marker({
-					position: { lat: trip.startLocation.lat, lng: trip.startLocation.lng },
-					map,
-					title: trip.startAddress || 'Start',
-					icon: { url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png' }
-				});
-				const endMarker = new google.maps.Marker({
-					position: { lat: trip.endLocation.lat, lng: trip.endLocation.lng },
-					map,
-					title: trip.endAddress || 'End',
-					icon: { url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' }
-				});
-				const directionsService = new google.maps.DirectionsService();
-				const directionsRenderer = new google.maps.DirectionsRenderer();
-				directionsRenderer.setMap(map);
-				directionsService.route(
-					{
-						origin: { lat: trip.startLocation.lat, lng: trip.startLocation.lng },
-						destination: { lat: trip.endLocation.lat, lng: trip.endLocation.lng },
-						travelMode: 'DRIVING'
-					},
-					(result, status) => {
-						if (status === 'OK') {
-							directionsRenderer.setDirections(result);
-						} else {
-							new google.maps.Polyline({
-								path: [
-									{ lat: trip.startLocation.lat, lng: trip.startLocation.lng },
-									{ lat: trip.endLocation.lat, lng: trip.endLocation.lng }
-								],
-								geodesic: true,
-								strokeColor: '#0000FF',
-								strokeOpacity: 1.0,
-								strokeWeight: 2
-							}).setMap(map);
-						}
-					}
-				);
-				const bounds = new google.maps.LatLngBounds();
-				bounds.extend({ lat: trip.startLocation.lat, lng: trip.startLocation.lng });
-				bounds.extend({ lat: trip.endLocation.lat, lng: trip.endLocation.lng });
-				map.fitBounds(bounds);
-				mapInstances[trip._id] = map;
-			});
-		} catch (error) {
-			console.error('Failed to initialize Google Maps:', error);
-			toast.error('Failed to load maps');
-		}
+		filteredDrivers = activeDrivers;
+		filteredVehicles = unassignedVehicles;
 	}
 
 	function filterData() {
@@ -200,16 +83,12 @@
 	function navigateTo(page) {
 		goto(page);
 	}
-
-	onMount(() => {
-		mapsReady = true;
-	});
 </script>
 
 <div class="container mx-auto p-6">
 	<h1 class="mb-6 text-3xl font-bold text-gray-800">Dashboard</h1>
 
-	{#if userState.isLoading}
+	{#if appState.user.isLoading}
 		<div class="flex h-64 items-center justify-center">
 			<div
 				class="h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-blue-500"
@@ -227,7 +106,6 @@
 		</div>
 
 		<!-- Stats Overview -->
-
 		<div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
 			<button
 				class="cursor-pointer rounded-lg border border-amber-400 bg-white p-6 shadow-md transition-all hover:scale-105"
@@ -253,7 +131,7 @@
 				<p class="mt-2 text-3xl font-bold text-gray-700">{stats.activeTrips}</p>
 				<p class="text-sm text-gray-500">Recent: {recentTrips.length}</p>
 			</button>
-			{#if userState.role === 'Admin'}
+			{#if appState.user.role === 'Admin'}
 				<div class="rounded-lg border border-amber-400 bg-white p-6 shadow-md">
 					<h2 class="text-xl font-semibold text-blue-600">Quick Actions</h2>
 					<div class="mt-2 space-y-2">
@@ -292,9 +170,9 @@
 										{vehicle.model} ({vehicle.year})
 									</p>
 								</div>
-								{#if userState.role === 'Admin'}
+								{#if appState.user.role === 'Admin'}
 									<button
-										onclick={() => navigateTo(`/vehicles`)}
+										onclick={() => navigateTo('/vehicles')}
 										class="text-sky-400 hover:text-lime-800"
 									>
 										Assign
@@ -327,7 +205,7 @@
 										{driver.assignedVehicle?.plateNumber || 'No Vehicle'}
 									</p>
 								</div>
-								{#if userState.role === 'Admin'}
+								{#if appState.user.role === 'Admin'}
 									<button
 										onclick={() => navigateTo(`/drivers/edit/${driver._id}`)}
 										class="text-sky-400 hover:text-lime-800"
@@ -375,7 +253,7 @@
 								{trip.endAddress || 'Loading address...'}
 							</p>
 							<div id="dashboard-map-{trip._id}" class="trip-map mt-2 h-32 w-full rounded"></div>
-							{#if userState.role === 'Admin'}
+							{#if appState.user.role === 'Admin'}
 								<div class="mt-2 flex justify-between">
 									<button
 										onclick={() => navigateTo(`/trips/edit/${trip._id}`)}

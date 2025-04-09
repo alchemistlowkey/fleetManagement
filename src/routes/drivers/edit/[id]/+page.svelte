@@ -5,7 +5,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 
-	const { userState } = getContext('userState');
+	const { appState } = getContext('appState');
 	let formData = {
 		driverName: '',
 		driverEmail: '',
@@ -14,7 +14,7 @@
 		status: 'active'
 	};
 
-	if (!userState.isLoggedIn || userState.role !== 'Admin') {
+	if (!appState.user.isLoggedIn || appState.user.role !== 'Admin') {
 		toast.error('You must be an Admin to access this page');
 		goto('/login');
 	} else {
@@ -22,10 +22,10 @@
 	}
 
 	async function fetchDriver() {
-		userState.isLoading = true;
+		appState.user.isLoading = true;
 		try {
 			const { data } = await axios.get(`/api/drivers/${$page.params.id}`, {
-				headers: { Authorization: `Bearer ${userState.token}` }
+				headers: { Authorization: `Bearer ${appState.user.token}` }
 			});
 			if (data.success) {
 				formData = data.driver;
@@ -35,17 +35,20 @@
 		} catch (error) {
 			toast.error(error.response?.data?.message || 'Failed to fetch driver');
 		} finally {
-			userState.isLoading = false;
+			appState.user.isLoading = false;
 		}
 	}
 
 	async function updateDriver(event) {
 		event.preventDefault();
-		userState.isLoading = true;
+		appState.user.isLoading = true;
 
 		try {
 			const { data } = await axios.put(`/api/drivers/${$page.params.id}`, formData, {
-				headers: { Authorization: `Bearer ${userState.token}`, 'Content-Type': 'application/json' }
+				headers: {
+					Authorization: `Bearer ${appState.user.token}`,
+					'Content-Type': 'application/json'
+				}
 			});
 			if (data.success) {
 				toast.success('Driver updated successfully');
@@ -56,14 +59,14 @@
 		} catch (error) {
 			toast.error(error.response?.data?.message || 'Failed to update driver');
 		} finally {
-			userState.isLoading = false;
+			appState.user.isLoading = false;
 		}
 	}
 </script>
 
 <div class="mx-auto max-w-md py-10">
 	<h1 class="mb-6 text-3xl font-bold">Edit Driver</h1>
-	{#if userState.isLoading && !formData.driverName}
+	{#if appState.user.isLoading && !formData.driverName}
 		<div class="flex justify-center">
 			<div
 				class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-500"
@@ -122,9 +125,9 @@
 			<button
 				type="submit"
 				class="w-full rounded bg-black p-2 text-white hover:bg-lime-700 disabled:opacity-50"
-				disabled={userState.isLoading}
+				disabled={appState.user.isLoading}
 			>
-				{#if userState.isLoading}
+				{#if appState.user.isLoading}
 					<div class="flex items-center justify-center">
 						<div
 							class="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-orange-500"

@@ -6,7 +6,7 @@
 	import { onMount } from 'svelte';
 	import { getGoogleMapsLoader } from '$lib/config/google-maps';
 
-	const { userState } = getContext('userState');
+	const { appState } = getContext('appState');
 	const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 	let formData = $state({
@@ -31,7 +31,7 @@
 	const todayMin = $state(new Date(now.setSeconds(0, 0)).toISOString().slice(0, 16));
 
 	$effect(() => {
-		if (!userState.isLoggedIn || userState.role !== 'Admin') {
+		if (!appState.user.isLoggedIn || appState.user.role !== 'Admin') {
 			toast.error('You must be an Admin to access this page');
 			goto('/login');
 		} else {
@@ -49,8 +49,8 @@
 	async function fetchVehiclesAndDrivers() {
 		try {
 			const [vehiclesResponse, driversResponse] = await Promise.all([
-				axios.get('/api/vehicles', { headers: { Authorization: `Bearer ${userState.token}` } }),
-				axios.get('/api/drivers', { headers: { Authorization: `Bearer ${userState.token}` } })
+				axios.get('/api/vehicles', { headers: { Authorization: `Bearer ${appState.user.token}` } }),
+				axios.get('/api/drivers', { headers: { Authorization: `Bearer ${appState.user.token}` } })
 			]);
 			vehicles = vehiclesResponse.data.vehicles || [];
 			drivers = driversResponse.data.drivers || [];
@@ -62,7 +62,7 @@
 
 	async function addTrip(event) {
 		event.preventDefault();
-		userState.isLoading = true;
+		appState.user.isLoading = true;
 
 		const submissionData = {
 			vehicleId: formData.vehicleId,
@@ -84,7 +84,7 @@
 		try {
 			const { data } = await axios.post('/api/trips', submissionData, {
 				headers: {
-					Authorization: `Bearer ${userState.token}`,
+					Authorization: `Bearer ${appState.user.token}`,
 					'Content-Type': 'application/json'
 				}
 			});
@@ -99,7 +99,7 @@
 			toast.error(error.response?.data?.message || 'Failed to add trip');
 			console.error('Client-side error:', error.response?.data || error);
 		} finally {
-			userState.isLoading = false;
+			appState.user.isLoading = false;
 		}
 	}
 
@@ -330,9 +330,9 @@
 		<button
 			type="submit"
 			class="w-full rounded bg-black p-2 text-white hover:bg-lime-700 disabled:opacity-50"
-			disabled={userState.isLoading || !formData.startLocation.lat || !formData.endLocation.lat}
+			disabled={appState.user.isLoading || !formData.startLocation.lat || !formData.endLocation.lat}
 		>
-			{#if userState.isLoading}
+			{#if appState.user.isLoading}
 				<div class="flex items-center justify-center">
 					<div
 						class="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-orange-300"

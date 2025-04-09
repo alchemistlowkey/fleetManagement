@@ -7,14 +7,14 @@
 	import { browser } from '$app/environment';
 	import { getGoogleMapsLoader } from '$lib/config/google-maps';
 
-	const { userState } = getContext('userState');
+	const { appState } = getContext('appState');
 
 	let trips = $state([]);
 	let mapInstances = $state({});
 	let mapsReady = $state(false);
 
 	$effect(() => {
-		if (!userState.isLoggedIn) {
+		if (!appState.user.isLoggedIn) {
 			toast.error('Please log in to view trips');
 			if (browser) goto('/login');
 		} else {
@@ -29,10 +29,10 @@
 	});
 
 	async function fetchTrips() {
-		userState.isLoading = true;
+		appState.user.isLoading = true;
 		try {
 			const { data } = await axios.get('/api/trips', {
-				headers: { Authorization: `Bearer ${userState.token}` }
+				headers: { Authorization: `Bearer ${appState.user.token}` }
 			});
 			if (data.success) {
 				trips = Array.isArray(data.trips)
@@ -55,7 +55,7 @@
 			toast.error(error.response?.data?.message || 'Failed to fetch trips');
 			trips = [];
 		} finally {
-			userState.isLoading = false;
+			appState.user.isLoading = false;
 		}
 	}
 
@@ -89,7 +89,7 @@
 		if (!confirm('Are you sure you want to delete this trip?')) return;
 		try {
 			const { data } = await axios.delete(`/api/trips/${id}`, {
-				headers: { Authorization: `Bearer ${userState.token}` }
+				headers: { Authorization: `Bearer ${appState.user.token}` }
 			});
 			if (data.success) {
 				toast.success('Trip deleted successfully');
@@ -187,7 +187,7 @@
 
 <div class="container mx-auto p-6">
 	<h1 class="mb-6 text-3xl font-bold text-gray-800">Trips</h1>
-	{#if userState.isLoading}
+	{#if appState.user.isLoading}
 		<div class="flex justify-center">
 			<div
 				class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-500"
@@ -226,7 +226,7 @@
 						<p class="text-gray-700"><strong>Distance:</strong> {trip.distance || 'N/A'} km</p>
 						<div id="map-{trip._id}" class="trip-map mt-2 h-48 w-full"></div>
 					</div>
-					{#if userState.role === 'Admin'}
+					{#if appState.user.role === 'Admin'}
 						<div class="button-container absolute right-0 bottom-0 left-0 bg-white p-4">
 							<div class="flex justify-center gap-2">
 								<button
