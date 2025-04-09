@@ -4,26 +4,39 @@
 	import toast from 'svelte-french-toast';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
+	import { getGoogleMapsLoader } from '$lib/config/google-maps';
 
 	const { userState } = getContext('userState');
-	let formData = {
+
+	let formData = $state({
 		vehicle: '',
 		driver: '',
 		startLocation: { lat: '', lng: '' },
 		endLocation: { lat: '', lng: '' },
+		distance: '',
 		startTime: '',
 		endTime: '',
 		status: 'scheduled'
-	};
-	let vehicles = [];
-	let drivers = [];
+	});
+	let vehicles = $state([]);
+	let drivers = $state([]);
+	let map = null;
+	let startMarker = null;
+	let endMarker = null;
+	let directionsService = null;
+	let directionsRenderer = null;
+	let mapInitialized = $state(false);
 
-	if (!userState.isLoggedIn || userState.role !== 'Admin') {
-		toast.error('You must be an Admin to access this page');
-		goto('/login');
-	} else {
-		fetchTripAndOptions();
-	}
+	$effect(() => {
+		if (!userState.isLoggedIn || userState.role !== 'Admin') {
+			toast.error('You must be an Admin to access this page');
+			if (browser) goto('/login');
+		} else {
+			fetchTripAndOptions();
+		}
+	});
 
 	async function fetchTripAndOptions() {
 		userState.isLoading = true;
@@ -35,6 +48,7 @@
 				axios.get('/api/vehicles', { headers: { Authorization: `Bearer ${userState.token}` } }),
 				axios.get('/api/drivers', { headers: { Authorization: `Bearer ${userState.token}` } })
 			]);
+
 			if (tripResponse.data.success) {
 				formData = {
 					...tripResponse.data.trip,
@@ -46,13 +60,17 @@
 						lat: tripResponse.data.trip.endLocation.lat,
 						lng: tripResponse.data.trip.endLocation.lng
 					},
+					distance: tripResponse.data.trip.distance || '',
 					startTime: new Date(tripResponse.data.trip.startTime).toISOString().slice(0, 16),
 					endTime: new Date(tripResponse.data.trip.endTime).toISOString().slice(0, 16)
 				};
+			} else {
+				toast.error(tripResponse.data.message || 'Failed to load trip');
 			}
 			vehicles = vehiclesResponse.data.vehicles || [];
 			drivers = driversResponse.data.drivers || [];
 		} catch (error) {
+			console.error('Fetch error:', error.response?.data || error.message);
 			toast.error('Failed to load trip data');
 		} finally {
 			userState.isLoading = false;
@@ -74,6 +92,7 @@
 				lat: parseFloat(formData.endLocation.lat),
 				lng: parseFloat(formData.endLocation.lng)
 			},
+			distance: parseFloat(formData.distance) || 0,
 			startTime: new Date(formData.startTime).toISOString(),
 			endTime: new Date(formData.endTime).toISOString(),
 			status: formData.status
@@ -85,16 +104,187 @@
 			});
 			if (data.success) {
 				toast.success('Trip updated successfully');
-				goto('/trips');
+				if (browser) goto('/trips');
 			} else {
-				toast.error(data.message);
+				toast.error(data.message || 'Failed to update trip');
 			}
 		} catch (error) {
+			console.error('Update trip error:', error.response?.data || error.message);
 			toast.error(error.response?.data?.message || 'Failed to update trip');
 		} finally {
 			userState.isLoading = false;
 		}
 	}
+
+	function calculateAndDisplayRoute() {
+		if (!formData.startLocation.lat || !formData.endLocation.lat || !directionsService) return;
+
+		const request = {
+			origin: {
+				lat: parseFloat(formData.startLocation.lat),
+				lng: parseFloat(formData.startLocation.lng)
+			},
+			destination: {
+				lat: parseFloat(formData.endLocation.lat),
+				lng: parseFloat(formData.endLocation.lng)
+			},
+			travelMode: 'DRIVING'
+		};
+
+		directionsService.route(request, (result, status) => {
+			if (status === 'OK') {
+				directionsRenderer.setDirections(result);
+				const distanceInMeters = result.routes[0].legs[0].distance.value;
+				formData.distance = (distanceInMeters / 1000).toFixed(2);
+			} else {
+				console.error('Directions request failed:', status);
+				toast.error('Failed to calculate route');
+			}
+		});
+	}
+
+	async function initializeMap() {
+		if (!browser || mapInitialized) return;
+
+		const loader = await getGoogleMapsLoader();
+		if (!loader) return;
+
+		try {
+			const google = await loader.load();
+			const mapOptions = {
+				center: formData.startLocation.lat
+					? {
+							lat: parseFloat(formData.startLocation.lat),
+							lng: parseFloat(formData.startLocation.lng)
+						}
+					: { lat: 51.505, lng: -0.09 },
+				zoom: 13
+			};
+			const mapElement = document.getElementById('location-map');
+			if (!mapElement) {
+				console.error('Map element not found');
+				return;
+			}
+			map = new google.maps.Map(mapElement, mapOptions);
+			directionsService = new google.maps.DirectionsService();
+			directionsRenderer = new google.maps.DirectionsRenderer();
+			directionsRenderer.setMap(map);
+
+			let settingStart = true;
+			map.addListener('click', (e) => {
+				const lat = e.latLng.lat();
+				const lng = e.latLng.lng();
+				if (settingStart) {
+					formData.startLocation = { lat, lng };
+					if (startMarker) startMarker.setMap(null);
+					startMarker = new google.maps.Marker({
+						position: { lat, lng },
+						map,
+						title: 'Start',
+						icon: { url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png' }
+					});
+				} else {
+					formData.endLocation = { lat, lng };
+					if (endMarker) endMarker.setMap(null);
+					endMarker = new google.maps.Marker({
+						position: { lat, lng },
+						map,
+						title: 'End',
+						icon: { url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' }
+					});
+					calculateAndDisplayRoute();
+				}
+				settingStart = !settingStart;
+			});
+
+			if (formData.startLocation.lat && formData.startLocation.lng) {
+				startMarker = new google.maps.Marker({
+					position: {
+						lat: parseFloat(formData.startLocation.lat),
+						lng: parseFloat(formData.startLocation.lng)
+					},
+					map,
+					title: 'Start',
+					icon: { url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png' }
+				});
+			}
+			if (formData.endLocation.lat && formData.endLocation.lng) {
+				endMarker = new google.maps.Marker({
+					position: {
+						lat: parseFloat(formData.endLocation.lat),
+						lng: parseFloat(formData.endLocation.lng)
+					},
+					map,
+					title: 'End',
+					icon: { url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' }
+				});
+				calculateAndDisplayRoute();
+			}
+
+			const startInput = document.getElementById('start-search');
+			const startAutocomplete = new google.maps.places.Autocomplete(startInput);
+			startAutocomplete.bindTo('bounds', map);
+			startAutocomplete.addListener('place_changed', () => {
+				const place = startAutocomplete.getPlace();
+				if (!place.geometry) {
+					toast.error('Start location not found');
+					return;
+				}
+				const lat = place.geometry.location.lat();
+				const lng = place.geometry.location.lng();
+				formData.startLocation = { lat, lng };
+				if (startMarker) startMarker.setMap(null);
+				startMarker = new google.maps.Marker({
+					position: { lat, lng },
+					map,
+					title: 'Start',
+					icon: { url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png' }
+				});
+				map.setCenter({ lat, lng });
+				if (formData.endLocation.lat) calculateAndDisplayRoute();
+			});
+
+			const endInput = document.getElementById('end-search');
+			const endAutocomplete = new google.maps.places.Autocomplete(endInput);
+			endAutocomplete.bindTo('bounds', map);
+			endAutocomplete.addListener('place_changed', () => {
+				const place = endAutocomplete.getPlace();
+				if (!place.geometry) {
+					toast.error('End location not found');
+					return;
+				}
+				const lat = place.geometry.location.lat();
+				const lng = place.geometry.location.lng();
+				formData.endLocation = { lat, lng };
+				if (endMarker) endMarker.setMap(null);
+				endMarker = new google.maps.Marker({
+					position: { lat, lng },
+					map,
+					title: 'End',
+					icon: { url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' }
+				});
+				map.setCenter({ lat, lng });
+				if (formData.startLocation.lat) calculateAndDisplayRoute();
+			});
+
+			mapInitialized = true;
+		} catch (error) {
+			console.error('Failed to load Google Maps:', error);
+			toast.error('Failed to load map');
+		}
+	}
+
+	onMount(() => {
+		if (browser && !userState.isLoading) {
+			initializeMap();
+		}
+	});
+
+	$effect(() => {
+		if (!userState.isLoading && formData.vehicle && browser && !mapInitialized) {
+			initializeMap();
+		}
+	});
 </script>
 
 <div class="mx-auto max-w-md py-10">
@@ -133,47 +323,40 @@
 				</select>
 			</div>
 			<div>
-				<label for="startLocationLat" class="block text-sm font-medium">Start Latitude</label>
+				<label for="start-search" class="block text-sm font-medium">Start Location</label>
 				<input
-					id="startLocationLat"
-					bind:value={formData.startLocation.lat}
-					type="number"
-					step="any"
+					id="start-search"
+					type="text"
+					placeholder="Search for start location"
 					class="w-full rounded border p-2"
-					required
 				/>
 			</div>
 			<div>
-				<label for="startLocationLng" class="block text-sm font-medium">Start Longitude</label>
+				<label for="end-search" class="block text-sm font-medium">End Location</label>
 				<input
-					id="startLocationLng"
-					bind:value={formData.startLocation.lng}
-					type="number"
-					step="any"
+					id="end-search"
+					type="text"
+					placeholder="Search for end location"
 					class="w-full rounded border p-2"
-					required
 				/>
 			</div>
 			<div>
-				<label for="endLocationLat" class="block text-sm font-medium">End Latitude</label>
-				<input
-					id="endLocationLat"
-					bind:value={formData.endLocation.lat}
-					type="number"
-					step="any"
-					class="w-full rounded border p-2"
-					required
-				/>
+				<label for="location-map" class="block text-sm font-medium">Route Map</label>
+				<div id="location-map" class="h-64 w-full"></div>
+				<p class="text-sm text-gray-500">
+					Click map or use search to set Start (first) and End (second). Route and distance
+					auto-calculate.
+				</p>
 			</div>
 			<div>
-				<label for="endLocationLng" class="block text-sm font-medium">End Longitude</label>
+				<label for="distance" class="block text-sm font-medium">Distance (km)</label>
 				<input
-					id="endLocationLng"
-					bind:value={formData.endLocation.lng}
+					id="distance"
+					bind:value={formData.distance}
 					type="number"
 					step="any"
 					class="w-full rounded border p-2"
-					required
+					readonly
 				/>
 			</div>
 			<div>
@@ -208,7 +391,7 @@
 			<button
 				type="submit"
 				class="w-full rounded bg-black p-2 text-white hover:bg-lime-700 disabled:opacity-50"
-				disabled={userState.isLoading}
+				disabled={userState.isLoading || !formData.startLocation.lat || !formData.endLocation.lat}
 			>
 				{#if userState.isLoading}
 					<div class="flex items-center justify-center">
@@ -223,3 +406,9 @@
 		</form>
 	{/if}
 </div>
+
+<style>
+	#location-map {
+		height: 300px;
+	}
+</style>

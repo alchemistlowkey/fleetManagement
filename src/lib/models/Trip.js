@@ -15,7 +15,11 @@ const tripSchema = new mongoose.Schema(
 		distance: { type: Number, required: true },
 		startTime: { type: Date, required: true },
 		endTime: { type: Date },
-		status: { type: String, enum: ['ongoing', 'completed', 'cancelled'], default: 'ongoing' },
+		status: {
+			type: String,
+			enum: ['inProgress', 'completed', 'cancelled', 'scheduled'],
+			default: 'scheduled'
+		},
 		fuelUsed: { type: Number, default: 0 } // in liters
 	},
 	{ timestamps: true }

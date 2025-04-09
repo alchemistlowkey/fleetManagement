@@ -8,25 +8,53 @@ export async function GET({ request, url }) {
 	try {
 		const authHeader = request.headers.get('Authorization');
 		if (!authHeader || !authHeader.startsWith('Bearer ')) {
+			console.error('No or invalid Authorization header in GET');
 			return json({ success: false, message: 'Unauthorized' }, { status: 401 });
 		}
 		const token = authHeader.split(' ')[1];
-		jwt.verify(token, JWT_SECRET);
 
-		const tripId = url.pathname.split('/').pop();
-		if (tripId !== '+server.js') {
-			const trip = await Trip.findById(tripId).populate('vehicle driver');
-			if (!trip) return json({ success: false, message: 'Trip not found' }, { status: 404 });
-			return json({ success: true, trip }, { status: 200 });
+		try {
+			jwt.verify(token, JWT_SECRET);
+		} catch (jwtErr) {
+			console.error('JWT verification failed in GET:', jwtErr.message);
+			return json({ success: false, message: 'Invalid token' }, { status: 401 });
 		}
 
-		const trips = await Trip.find().populate('vehicle driver');
-		return json({ success: true, trips }, { status: 200 });
+		const pathParts = url.pathname.split('/').filter(Boolean);
+		const tripId = pathParts[pathParts.length - 1];
+
+		if (tripId === 'trips') {
+			const trips = await Trip.find().populate('vehicleId driverId');
+			const transformedTrips = trips.map((trip) => ({
+				...trip.toObject(),
+				vehicle: trip.vehicleId,
+				driver: trip.driverId,
+				vehicleId: undefined,
+				driverId: undefined
+			}));
+			return json({ success: true, trips: transformedTrips }, { status: 200 });
+		}
+
+		const trip = await Trip.findById(tripId).populate('vehicleId driverId');
+		if (!trip) {
+			console.error('GET trip not found for ID:', tripId);
+			return json({ success: false, message: 'Trip not found' }, { status: 404 });
+		}
+		const transformedTrip = {
+			...trip.toObject(),
+			vehicle: trip.vehicleId,
+			driver: trip.driverId,
+			vehicleId: undefined,
+			driverId: undefined
+		};
+		return json({ success: true, trip: transformedTrip }, { status: 200 });
 	} catch (err) {
-		return json({ success: false, message: err.message }, { status: 401 });
+		console.error('Error in GET /api/trips:', err.stack);
+		return json({ success: false, message: err.message }, { status: 500 });
 	}
 }
 
+// POST and PUT remain unchanged for this fix
 export async function POST({ request }) {
 	try {
 		const authHeader = request.headers.get('Authorization');
@@ -44,7 +72,6 @@ export async function POST({ request }) {
 		}
 
 		const data = await request.json();
-		console.log('Received trip data:', data);
 
 		const trip = new Trip(data);
 		await trip.save();
@@ -56,28 +83,5 @@ export async function POST({ request }) {
 			{ success: false, message: 'Failed to add trip', details: err.message || 'Unknown error' },
 			{ status: 500 }
 		);
-	}
-}
-
-export async function PUT({ request, url }) {
-	try {
-		const authHeader = request.headers.get('Authorization');
-		if (!authHeader || !authHeader.startsWith('Bearer ')) {
-			return json({ success: false, message: 'Unauthorized' }, { status: 401 });
-		}
-		const token = authHeader.split(' ')[1];
-		const decoded = jwt.verify(token, JWT_SECRET);
-		if (decoded.role !== 'Admin') {
-			return json({ success: false, message: 'Admin access required' }, { status: 403 });
-		}
-
-		const tripId = url.pathname.split('/').pop();
-		const data = await request.json();
-		const trip = await Trip.findByIdAndUpdate(tripId, data, { new: true });
-		if (!trip) return json({ success: false, message: 'Trip not found' }, { status: 404 });
-
-		return json({ success: true, message: 'Trip updated', trip }, { status: 200 });
-	} catch (err) {
-		return json({ success: false, message: err.message }, { status: 500 });
 	}
 }

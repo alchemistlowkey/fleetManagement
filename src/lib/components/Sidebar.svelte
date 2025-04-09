@@ -44,25 +44,6 @@
 					<p class="hidden md:block">Add Vehicle</p>
 				</a>
 			{/if}
-			<a
-				href="/vehicles"
-				class="flex items-center gap-2 rounded transition-all"
-				class:font-bold={$page.url.pathname === '/vehicles'}
-				class:bg-sky-800={$page.url.pathname === '/vehicles'}
-			>
-				<img src={assets.vehicle_icon} alt="vehicles icon" class="max-w-6 p-1 sm:p-2 md:max-w-8" />
-				<p class="hidden md:block">Vehicles</p>
-			</a>
-
-			<a
-				href="/drivers"
-				class="flex items-center gap-2 rounded transition-all"
-				class:font-bold={$page.url.pathname === '/drivers'}
-				class:bg-sky-800={$page.url.pathname === '/drivers'}
-			>
-				<img src={assets.driver_icon} alt="drivers icon" class="max-w-6 p-1 sm:p-2 md:max-w-8" />
-				<p class="hidden md:block">Drivers</p>
-			</a>
 			{#if userState.role === 'Admin'}
 				<a
 					href="/drivers/add"
@@ -86,6 +67,25 @@
 					<p class="hidden md:block">Add Trip</p>
 				</a>
 			{/if}
+			<a
+				href="/vehicles"
+				class="flex items-center gap-2 rounded transition-all"
+				class:font-bold={$page.url.pathname === '/vehicles'}
+				class:bg-sky-800={$page.url.pathname === '/vehicles'}
+			>
+				<img src={assets.vehicle_icon} alt="vehicles icon" class="max-w-6 p-1 sm:p-2 md:max-w-8" />
+				<p class="hidden md:block">Vehicles</p>
+			</a>
+
+			<a
+				href="/drivers"
+				class="flex items-center gap-2 rounded transition-all"
+				class:font-bold={$page.url.pathname === '/drivers'}
+				class:bg-sky-800={$page.url.pathname === '/drivers'}
+			>
+				<img src={assets.driver_icon} alt="drivers icon" class="max-w-6 p-1 sm:p-2 md:max-w-8" />
+				<p class="hidden md:block">Drivers</p>
+			</a>
 
 			<a
 				href="/trips"

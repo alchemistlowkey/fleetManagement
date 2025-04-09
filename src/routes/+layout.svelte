@@ -1,6 +1,7 @@
 <script>
 	import { Toaster } from 'svelte-french-toast';
 	import '../app.css';
+	import 'leaflet/dist/leaflet.css';
 	import UserContext from '$lib/context/UserContext.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 
