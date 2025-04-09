@@ -199,47 +199,51 @@
 		<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 			{#each trips as trip (trip._id)}
 				<div
-					class="rounded-lg border border-amber-400 bg-white p-4 shadow-md hover:scale-105 hover:shadow-lg hover:transition-all"
+					class="trip-card relative rounded-lg border border-amber-400 bg-white p-4 shadow-md hover:scale-105 hover:shadow-lg hover:transition-all"
 				>
-					<h2 class="text-xl font-semibold text-blue-600">
-						{trip.vehicle?.plateNumber || 'Unknown Vehicle'} - {trip.driver?.driverName ||
-							'Unknown Driver'}
-					</h2>
-					<p class="text-gray-700">
-						<strong>Start:</strong>
-						{new Date(trip.startTime).toLocaleString()}
-					</p>
-					<p class="text-gray-700">
-						<strong>End:</strong>
-						{new Date(trip.endTime).toLocaleString()}
-					</p>
-					<p class="text-cyan-700 py-2">
-						<strong>From:</strong>
-						{trip.startAddress || 'Loading address...'}
-					</p>
-					<p class="text-fuchsia-700 py-2">
-						<strong>To:</strong>
-						{trip.endAddress || 'Loading address...'}
-					</p>
-					<p class="text-gray-700"><strong>Status:</strong> {trip.status}</p>
-					<p class="text-gray-700"><strong>Distance:</strong> {trip.distance || 'N/A'} km</p>
-					<div id="map-{trip._id}" class="trip-map mt-2 h-48 w-full"></div>
+					<div class="content">
+						<h2 class="text-xl font-semibold text-blue-600">
+							{trip.vehicle?.plateNumber || 'Unknown Vehicle'} - {trip.driver?.driverName ||
+								'Unknown Driver'}
+						</h2>
+						<p class="text-gray-700">
+							<strong>Start:</strong>
+							{new Date(trip.startTime).toLocaleString()}
+						</p>
+						<p class="text-gray-700">
+							<strong>End:</strong>
+							{new Date(trip.endTime).toLocaleString()}
+						</p>
+						<p class="py-2 text-cyan-700">
+							<strong>From:</strong>
+							{trip.startAddress || 'Loading address...'}
+						</p>
+						<p class="py-2 text-fuchsia-700">
+							<strong>To:</strong>
+							{trip.endAddress || 'Loading address...'}
+						</p>
+						<p class="text-gray-700"><strong>Status:</strong> {trip.status}</p>
+						<p class="text-gray-700"><strong>Distance:</strong> {trip.distance || 'N/A'} km</p>
+						<div id="map-{trip._id}" class="trip-map mt-2 h-48 w-full"></div>
+					</div>
 					{#if userState.role === 'Admin'}
-						<div class="mt-2 flex justify-center gap-2">
-							<button
-								onclick={() => {
-									if (browser) goto(`/trips/edit/${trip._id}`);
-								}}
-								class="rounded bg-sky-400 p-2 text-white hover:bg-lime-800"
-							>
-								Edit
-							</button>
-							<button
-								onclick={() => deleteTrip(trip._id)}
-								class="rounded bg-rose-400 p-2 text-white hover:bg-teal-800"
-							>
-								Delete
-							</button>
+						<div class="button-container absolute right-0 bottom-0 left-0 bg-white p-4">
+							<div class="flex justify-center gap-2">
+								<button
+									onclick={() => {
+										if (browser) goto(`/trips/edit/${trip._id}`);
+									}}
+									class="w-20 rounded bg-sky-400 p-2 text-white hover:bg-lime-800"
+								>
+									Edit
+								</button>
+								<button
+									onclick={() => deleteTrip(trip._id)}
+									class="w-20 rounded bg-rose-400 p-2 text-white hover:bg-teal-800"
+								>
+									Delete
+								</button>
+							</div>
 						</div>
 					{/if}
 				</div>
@@ -251,5 +255,19 @@
 <style>
 	.trip-map {
 		height: 200px;
+	}
+
+	.trip-card {
+		position: relative;
+		min-height: 400px;
+		padding-bottom: 60px;
+	}
+
+	.content {
+		position: relative;
+	}
+
+	.button-container {
+		border-top: 1px solid #e5e7eb;
 	}
 </style>

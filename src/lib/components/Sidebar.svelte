@@ -24,10 +24,10 @@
 
 		<nav class="flex flex-col gap-2">
 			<a
-				href="/"
+				href="/dashboard"
 				class="flex items-center gap-2 rounded transition-all"
-				class:font-bold={$page.url.pathname === '/'}
-				class:bg-sky-800={$page.url.pathname === '/'}
+				class:font-bold={$page.url.pathname === '/dashboard'}
+				class:bg-sky-800={$page.url.pathname === '/dashboard'}
 			>
 				<img src={assets.home_icon} alt="home icon" class="max-w-6 p-1 sm:p-2 md:md:max-w-8" />
 				<p class="hidden pe-1 md:block">Dashboard</p>
