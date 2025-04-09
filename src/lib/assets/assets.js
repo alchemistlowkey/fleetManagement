@@ -27,6 +27,7 @@ import vehicle_icon from './vehicle.svg';
 import driver_icon from './driver.svg';
 import vehicle_add_icon from './addVehicle.svg';
 import trip_icon from './trip.svg';
+import driver_add_icon from './addDriver.svg';
 
 export const assets = {
 	dropdown_icon,
@@ -57,5 +58,6 @@ export const assets = {
 	vehicle_icon,
 	driver_icon,
 	vehicle_add_icon,
-	trip_icon
+	trip_icon,
+	driver_add_icon
 };

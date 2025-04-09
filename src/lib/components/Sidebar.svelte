@@ -51,7 +51,7 @@
 					class:font-bold={$page.url.pathname === '/drivers/add'}
 					class:bg-sky-800={$page.url.pathname === '/drivers/add'}
 				>
-					<img src={assets.add_icon} alt="add icon" class="max-w-6 p-1 sm:p-2 md:max-w-8" />
+					<img src={assets.driver_add_icon} alt="add icon" class="max-w-6 p-1 sm:p-2 md:max-w-8" />
 					<p class="hidden md:block">Add Driver</p>
 				</a>
 			{/if}

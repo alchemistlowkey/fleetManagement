@@ -20,6 +20,9 @@
 	let activeDrivers = $state([]);
 	let mapInstances = $state({});
 	let mapsReady = $state(false);
+	let searchQuery = $state('');
+	let filteredDrivers = $state([]);
+	let filteredVehicles = $state([]);
 
 	$effect(() => {
 		if (!userState.isLoggedIn) {
@@ -36,6 +39,10 @@
 		}
 	});
 
+	$effect(() => {
+		filterData();
+	});
+
 	async function fetchDashboardData() {
 		userState.isLoading = true;
 		try {
@@ -50,12 +57,14 @@
 				activeDrivers = driversRes.data.drivers
 					.filter((d) => d.status === 'active' && d.assignedVehicle)
 					.slice(0, 5);
+				filteredDrivers = driversRes.data.drivers;
 			}
 
 			if (vehiclesRes.data.success) {
 				stats.totalVehicles = vehiclesRes.data.vehicles.length;
 				stats.availableVehicles = vehiclesRes.data.vehicles.filter((v) => !v.assignedDriver).length;
 				unassignedVehicles = vehiclesRes.data.vehicles.filter((v) => !v.assignedDriver).slice(0, 5);
+				filteredVehicles = vehiclesRes.data.vehicles;
 			}
 
 			if (tripsRes.data.success) {
@@ -105,25 +114,19 @@
 
 	async function initializeTripMaps() {
 		if (!browser || !Array.isArray(recentTrips) || recentTrips.length === 0) return;
-
 		const loader = await getGoogleMapsLoader();
 		if (!loader) return;
-
 		try {
 			const google = await loader.load();
 			recentTrips.forEach((trip) => {
 				const mapId = `dashboard-map-${trip._id}`;
 				const mapElement = document.getElementById(mapId);
-				if (!mapElement) {
-					console.error(`Map element not found for trip ${trip._id}`);
-					return;
-				}
+				if (!mapElement) return;
 				const map = new google.maps.Map(mapElement, {
 					center: { lat: trip.startLocation.lat, lng: trip.startLocation.lng },
 					zoom: 13,
-					disableDefaultUI: true // Simplified UI for dashboard
+					disableDefaultUI: true
 				});
-
 				const startMarker = new google.maps.Marker({
 					position: { lat: trip.startLocation.lat, lng: trip.startLocation.lng },
 					map,
@@ -136,44 +139,61 @@
 					title: trip.endAddress || 'End',
 					icon: { url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' }
 				});
-
 				const directionsService = new google.maps.DirectionsService();
 				const directionsRenderer = new google.maps.DirectionsRenderer();
 				directionsRenderer.setMap(map);
-
-				const request = {
-					origin: { lat: trip.startLocation.lat, lng: trip.startLocation.lng },
-					destination: { lat: trip.endLocation.lat, lng: trip.endLocation.lng },
-					travelMode: 'DRIVING'
-				};
-				directionsService.route(request, (result, status) => {
-					if (status === 'OK') {
-						directionsRenderer.setDirections(result);
-					} else {
-						console.error(`Directions request failed for trip ${trip._id}:`, status);
-						new google.maps.Polyline({
-							path: [
-								{ lat: trip.startLocation.lat, lng: trip.startLocation.lng },
-								{ lat: trip.endLocation.lat, lng: trip.endLocation.lng }
-							],
-							geodesic: true,
-							strokeColor: '#0000FF',
-							strokeOpacity: 1.0,
-							strokeWeight: 2
-						}).setMap(map);
+				directionsService.route(
+					{
+						origin: { lat: trip.startLocation.lat, lng: trip.startLocation.lng },
+						destination: { lat: trip.endLocation.lat, lng: trip.endLocation.lng },
+						travelMode: 'DRIVING'
+					},
+					(result, status) => {
+						if (status === 'OK') {
+							directionsRenderer.setDirections(result);
+						} else {
+							new google.maps.Polyline({
+								path: [
+									{ lat: trip.startLocation.lat, lng: trip.startLocation.lng },
+									{ lat: trip.endLocation.lat, lng: trip.endLocation.lng }
+								],
+								geodesic: true,
+								strokeColor: '#0000FF',
+								strokeOpacity: 1.0,
+								strokeWeight: 2
+							}).setMap(map);
+						}
 					}
-				});
-
+				);
 				const bounds = new google.maps.LatLngBounds();
 				bounds.extend({ lat: trip.startLocation.lat, lng: trip.startLocation.lng });
 				bounds.extend({ lat: trip.endLocation.lat, lng: trip.endLocation.lng });
 				map.fitBounds(bounds);
-
 				mapInstances[trip._id] = map;
 			});
 		} catch (error) {
 			console.error('Failed to initialize Google Maps:', error);
 			toast.error('Failed to load maps');
+		}
+	}
+
+	function filterData() {
+		if (!searchQuery) {
+			filteredDrivers = activeDrivers;
+			filteredVehicles = unassignedVehicles;
+		} else {
+			const query = searchQuery.toLowerCase();
+			filteredDrivers = activeDrivers.filter(
+				(d) =>
+					d.driverName.toLowerCase().includes(query) ||
+					d.assignedVehicle?.plateNumber?.toLowerCase().includes(query)
+			);
+			filteredVehicles = unassignedVehicles.filter(
+				(v) =>
+					v.plateNumber.toLowerCase().includes(query) ||
+					v.make.toLowerCase().includes(query) ||
+					v.model.toLowerCase().includes(query)
+			);
 		}
 	}
 
@@ -196,6 +216,16 @@
 			></div>
 		</div>
 	{:else}
+		<!-- Search Bar -->
+		<div class="mb-6">
+			<input
+				type="text"
+				bind:value={searchQuery}
+				placeholder="Search drivers or vehicles..."
+				class="w-full rounded-lg border border-amber-400 shadow-md p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+			/>
+		</div>
+
 		<!-- Stats Overview -->
 		<div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
 			<button
@@ -227,13 +257,13 @@
 				<div class="mt-2 space-y-2">
 					{#if userState.role === 'Admin'}
 						<button
-							onclick={() => navigateTo('/drivers/new')}
+							onclick={() => navigateTo('/drivers/add')}
 							class="w-full rounded bg-sky-400 p-2 text-white hover:bg-lime-800"
 						>
 							Add Driver
 						</button>
 						<button
-							onclick={() => navigateTo('/vehicles/new')}
+							onclick={() => navigateTo('/vehicles/add')}
 							class="w-full rounded bg-sky-400 p-2 text-white hover:bg-lime-800"
 						>
 							Add Vehicle
@@ -248,11 +278,11 @@
 			<!-- Unassigned Vehicles -->
 			<div class="rounded-lg border border-amber-400 bg-white p-6 shadow-md">
 				<h2 class="mb-4 text-xl font-semibold text-blue-600">Unassigned Vehicles</h2>
-				{#if unassignedVehicles.length === 0}
+				{#if filteredVehicles.length === 0}
 					<p class="text-gray-500">No unassigned vehicles</p>
 				{:else}
 					<div class="space-y-4">
-						{#each unassignedVehicles as vehicle}
+						{#each filteredVehicles as vehicle}
 							<div class="flex items-center justify-between border-b pb-2">
 								<div>
 									<p class="font-medium text-gray-700">{vehicle.plateNumber}</p>
@@ -284,11 +314,11 @@
 			<!-- Active Drivers -->
 			<div class="rounded-lg border border-amber-400 bg-white p-6 shadow-md">
 				<h2 class="mb-4 text-xl font-semibold text-blue-600">Active Drivers</h2>
-				{#if activeDrivers.length === 0}
+				{#if filteredDrivers.length === 0}
 					<p class="text-gray-500">No active drivers</p>
 				{:else}
 					<div class="space-y-4">
-						{#each activeDrivers as driver}
+						{#each filteredDrivers as driver}
 							<div class="flex items-center justify-between border-b pb-2">
 								<div>
 									<p class="font-medium text-gray-700">{driver.driverName}</p>
@@ -313,62 +343,70 @@
 				{/if}
 			</div>
 		</div>
-		<div class="grid grid-cols-1 gap-6 lg:grid-cols-3 my-6">
-			<!-- Recent Trips -->
-			<div class="rounded-lg border border-amber-400 bg-white p-6 shadow-md">
-				<h2 class="mb-4 text-xl font-semibold text-blue-600">Recent Trips</h2>
-				{#if recentTrips.length === 0}
-					<p class="text-gray-500">No recent trips</p>
-				{:else}
-					<div class="space-y-6">
-						{#each recentTrips as trip}
-							<div class="border-b pb-4">
-								<h3 class="font-medium text-blue-600">
-									{trip.vehicle?.plateNumber || 'Unknown Vehicle'} -
-									{trip.driver?.driverName || 'Unknown Driver'}
-								</h3>
-								<p class="mt-1 text-sm text-gray-700">
-									<strong>Start:</strong>
-									{new Date(trip.startTime).toLocaleString()}
-								</p>
-								<p class="text-sm text-gray-700">
-									<strong>End:</strong>
-									{trip.status === 'active'
-										? 'In Progress'
-										: new Date(trip.endTime).toLocaleString()}
-								</p>
-								<p class="mt-1 text-sm text-cyan-700">
-									<strong>From:</strong>
-									{trip.startAddress || 'Loading address...'}
-								</p>
-								<p class="text-sm text-fuchsia-700">
-									<strong>To:</strong>
-									{trip.endAddress || 'Loading address...'}
-								</p>
-								<div id="dashboard-map-{trip._id}" class="trip-map mt-2 h-32 w-full rounded"></div>
-								{#if userState.role === 'Admin'}
+
+		<!-- Recent Trips -->
+		<div class="my-6">
+			<h2 class="mb-4 text-xl font-semibold text-blue-600">Recent Trips</h2>
+			{#if recentTrips.length === 0}
+				<p class="text-gray-500">No recent trips</p>
+			{:else}
+				<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+					{#each recentTrips as trip}
+						<div class="rounded-lg border border-amber-400 bg-white p-4 shadow-md">
+							<h3 class="font-medium text-blue-600">
+								{trip.vehicle?.plateNumber || 'Unknown Vehicle'} -
+								{trip.driver?.driverName || 'Unknown Driver'}
+							</h3>
+							<p class="mt-1 text-sm text-gray-700">
+								<strong>Start:</strong>
+								{new Date(trip.startTime).toLocaleString()}
+							</p>
+							<p class="text-sm text-gray-700">
+								<strong>End:</strong>
+								{trip.status === 'active' ? 'In Progress' : new Date(trip.endTime).toLocaleString()}
+							</p>
+							<p class="mt-2 text-sm text-cyan-700">
+								<strong>From:</strong>
+								{trip.startAddress || 'Loading address...'}
+							</p>
+							<p class="text-sm text-fuchsia-700 my-2">
+								<strong>To:</strong>
+								{trip.endAddress || 'Loading address...'}
+							</p>
+							<div id="dashboard-map-{trip._id}" class="trip-map mt-2 h-32 w-full rounded"></div>
+							{#if userState.role === 'Admin'}
+								<div class="mt-2 flex justify-between">
 									<button
 										onclick={() => navigateTo(`/trips/edit/${trip._id}`)}
-										class="mt-2 text-sm text-sky-400 hover:text-lime-800"
+										class="text-sm text-sky-400 hover:text-lime-800"
 									>
-										Edit Trip
+										Edit
 									</button>
-								{/if}
-							</div>
-						{/each}
-					</div>
-					<button onclick={() => navigateTo('/trips')} class="mt-4 text-blue-600 hover:underline">
-						View All Trips
-					</button>
-				{/if}
-			</div>
+									<button
+										onclick={() => navigateTo('/trips')}
+										class="text-sm text-blue-600 hover:underline"
+									>
+										View Details
+									</button>
+								</div>
+							{/if}
+						</div>
+					{/each}
+				</div>
+                <div class="flex justify-center">
+
+                    <button onclick={() => navigateTo('/trips')} class="mt-4 text-blue-600 hover:underline">
+                        View All Trips
+                    </button>
+                </div>
+			{/if}
 		</div>
 	{/if}
 </div>
 
 <style>
 	.trip-map {
-		height: 128px; /* Smaller height for dashboard */
+		height: 128px;
 		border-radius: 0.5rem;
 	}
 </style>
