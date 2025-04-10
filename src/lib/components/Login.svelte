@@ -5,13 +5,12 @@
 	import axios from 'axios';
 	import toast from 'svelte-french-toast';
 
-	const { appState, resetUserState } = getContext('appState');
+	const { appState } = getContext('appState');
 	let otpDigits = $state(Array(6).fill(''));
 	let isVerifying = $state(false);
-	let timeLeft = $state(60); // 1 minute to match backend (adjust to 600 for 10 minutes if needed)
+	let timeLeft = $state(60);
 	let timerExpired = $state(false);
 
-	// Reactive timer effect
 	$effect(() => {
 		if (isVerifying && !timerExpired) {
 			const interval = setInterval(() => {
@@ -160,7 +159,7 @@
 	function formatTime(seconds) {
 		const minutes = Math.floor(seconds / 60);
 		const secs = seconds % 60;
-		return `${minutes}:${secs < 1 ? '0' : ''}${secs}`; // Fixed padding logic
+		return `${minutes}:${secs < 1 ? '0' : ''}${secs}`;
 	}
 </script>
 

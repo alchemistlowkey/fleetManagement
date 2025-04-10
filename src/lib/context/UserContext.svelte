@@ -111,7 +111,9 @@
 				geocoder.geocode(
 					{ location: { lat: location.lat, lng: location.lng } },
 					(results, status) => {
-						resolve(status === 'OK' && results[0] ? results[0].formatted_address : 'Unknown Location');
+						resolve(
+							status === 'OK' && results[0] ? results[0].formatted_address : 'Unknown Location'
+						);
 					}
 				);
 			});

@@ -19,7 +19,7 @@ async function initializeDB() {
 	}
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Middleware to verify JWT and attach user to locals
 async function authenticate(event) {
@@ -47,11 +47,19 @@ function requireAdmin(event) {
 }
 
 export async function handle({ event, resolve }) {
-	await initializeDB(); // Ensure DB is connected
+	await initializeDB();
+
+	// Public routes that don't require authentication
+	const publicRoutes = [
+		'/api/auth/login',
+		'/api/auth/signup',
+		'/api/auth/verify',
+		'/api/auth/resend-otp'
+	];
 
 	try {
-		// Authenticate all requests that need a token
-		if (event.url.pathname.startsWith('/api')) {
+		// Only authenticate if the route is under /api but not a public route
+		if (event.url.pathname.startsWith('/api') && !publicRoutes.includes(event.url.pathname)) {
 			await authenticate(event);
 		}
 	} catch (err) {
