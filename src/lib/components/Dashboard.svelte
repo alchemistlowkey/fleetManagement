@@ -23,6 +23,7 @@
 	let searchQuery = $state('');
 	let filteredDrivers = $state([]);
 	let filteredVehicles = $state([]);
+	let showFullAddresses = $state({});
 
 	$effect(() => {
 		if (!appState.user.isLoggedIn) {
@@ -42,6 +43,18 @@
 	$effect(() => {
 		filterData();
 	});
+
+	function truncateText(text, maxLength = 20) {
+		if (!text || text.length <= maxLength) return text;
+		return text.slice(0, maxLength);
+	}
+
+	function toggleAddress(tripId, field) {
+		if (!showFullAddresses[tripId]) {
+			showFullAddresses[tripId] = { start: false, end: false };
+		}
+		showFullAddresses[tripId][field] = !showFullAddresses[tripId][field];
+	}
 
 	async function fetchDashboardData() {
 		appState.user.isLoading = true;
@@ -79,6 +92,12 @@
 						endAddress: await geocodeLatLng(trip.endLocation)
 					}))
 				);
+				// Initialize showFullAddresses for each trip
+				recentTrips.forEach((trip) => {
+					if (!showFullAddresses[trip._id]) {
+						showFullAddresses[trip._id] = { start: false, end: false };
+					}
+				});
 			}
 		} catch (error) {
 			toast.error('Failed to load dashboard data');
@@ -358,21 +377,41 @@
 								{trip.vehicle?.plateNumber || 'Unknown Vehicle'} -
 								{trip.driver?.driverName || 'Unknown Driver'}
 							</h3>
-							<p class="mt-1 text-sm text-gray-700">
-								<strong>Start:</strong>
-								{new Date(trip.startTime).toLocaleString()}
-							</p>
-							<p class="text-sm text-gray-700">
-								<strong>End:</strong>
-								{trip.status === 'active' ? 'In Progress' : new Date(trip.endTime).toLocaleString()}
-							</p>
 							<p class="mt-2 text-sm text-cyan-700">
 								<strong>From:</strong>
-								{trip.startAddress || 'Loading address...'}
+								{#if showFullAddresses[trip._id]?.start}
+									{trip.startAddress || 'Loading address...'}
+								{:else}
+									{truncateText(trip.startAddress || 'Loading address...')}
+									{#if (trip.startAddress || 'Loading address...').length > 20}
+										<!-- svelte-ignore a11y_click_events_have_key_events -->
+										<!-- svelte-ignore a11y_no_static_element_interactions -->
+										<span
+											class="cursor-pointer text-blue-500 hover:underline"
+											onclick={() => toggleAddress(trip._id, 'start')}
+										>
+											...
+										</span>
+									{/if}
+								{/if}
 							</p>
 							<p class="my-2 text-sm text-fuchsia-700">
 								<strong>To:</strong>
-								{trip.endAddress || 'Loading address...'}
+								{#if showFullAddresses[trip._id]?.end}
+									{trip.endAddress || 'Loading address...'}
+								{:else}
+									{truncateText(trip.endAddress || 'Loading address...')}
+									{#if (trip.endAddress || 'Loading address...').length > 20}
+										<!-- svelte-ignore a11y_click_events_have_key_events -->
+										<!-- svelte-ignore a11y_no_static_element_interactions -->
+										<span
+											class="cursor-pointer text-blue-500 hover:underline"
+											onclick={() => toggleAddress(trip._id, 'end')}
+										>
+											...
+										</span>
+									{/if}
+								{/if}
 							</p>
 							<div id="dashboard-map-{trip._id}" class="trip-map mt-2 h-32 w-full rounded"></div>
 							{#if appState.user.role === 'Admin'}
