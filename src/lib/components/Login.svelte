@@ -164,7 +164,7 @@
 </script>
 
 {#if !appState.user.isLoggedIn}
-	<div class="mx-auto my-40 max-w-sm items-center justify-center rounded-lg bg-white p-6 shadow">
+	<div class="mx-auto my-40 max-w-sm items-center justify-center rounded-lg bg-white p-6 shadow text-xs md:text-base">
 		{#if isVerifying}
 			<!-- OTP Verification -->
 			<h2 class="mb-4 text-center text-xl font-bold">Verify Email</h2>
@@ -294,7 +294,7 @@
 		{/if}
 	</div>
 {:else}
-	<div class="mx-auto my-80 flex items-center justify-center text-center">
-		You are currently logged in as {appState.user.email}
+	<div class="mx-auto my-80 flex items-center justify-center text-center text-xs md:text-base">
+		You are currently logged in as {appState.user.name} ({appState.user.email})
 	</div>
 {/if}

@@ -101,7 +101,7 @@
 	}
 </script>
 
-<div class="container mx-auto p-6">
+<div class="container mx-auto md:p-6 text-xs md:text-base">
 	<h1 class="mb-6 text-3xl font-bold text-gray-800">Vehicles</h1>
 	{#if appState.user.isLoading}
 		<div class="flex justify-center">

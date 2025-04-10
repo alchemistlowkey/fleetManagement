@@ -44,7 +44,7 @@
 	}
 </script>
 
-<div class="mx-auto max-w-md py-10">
+<div class="mx-auto max-w-md md:p-6 text-xs md:text-base">
 	<h1 class="mb-6 text-3xl font-bold">Add Driver</h1>
 	<form onsubmit={addDriver} class="max-w-md space-y-4">
 		<div>

@@ -4,6 +4,7 @@
 	import toast from 'svelte-french-toast';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { getGoogleMapsLoader } from '$lib/config/google-maps';
 
@@ -19,6 +20,8 @@
 		endTime: '',
 		status: 'scheduled'
 	});
+	let vehicles = $state([]);
+	let drivers = $state([]);
 	let map = null;
 	let startMarker = null;
 	let endMarker = null;
@@ -26,49 +29,59 @@
 	let directionsRenderer = null;
 	let mapInitialized = $state(false);
 
+	const now = new Date();
+	const todayMin = $state(new Date(now.setSeconds(0, 0)).toISOString().slice(0, 16));
+
 	$effect(() => {
 		if (!appState.user.isLoggedIn || appState.user.role !== 'Admin') {
 			toast.error('You must be an Admin to access this page');
 			if (browser) goto('/login');
 		} else {
-			loadTripData();
+			fetchTripAndOptions();
 		}
 	});
 
-	async function loadTripData() {
+	// Ensure endTime is not before startTime
+	$effect(() => {
+		if (formData.startTime && formData.endTime && formData.endTime < formData.startTime) {
+			formData.endTime = formData.startTime; // Reset endTime if it's before startTime
+		}
+	});
+
+	async function fetchTripAndOptions() {
 		appState.user.isLoading = true;
 		try {
-			const trip = appState.trips.find((t) => t._id === $page.params.id);
-			if (trip) {
+			const [tripResponse, vehiclesResponse, driversResponse] = await Promise.all([
+				axios.get(`/api/trips/${$page.params.id}`, {
+					headers: { Authorization: `Bearer ${appState.user.token}` }
+				}),
+				axios.get('/api/vehicles', { headers: { Authorization: `Bearer ${appState.user.token}` } }),
+				axios.get('/api/drivers', { headers: { Authorization: `Bearer ${appState.user.token}` } })
+			]);
+
+			if (tripResponse.data.success) {
 				formData = {
-					...trip,
-					startLocation: { lat: trip.startLocation.lat, lng: trip.startLocation.lng },
-					endLocation: { lat: trip.endLocation.lat, lng: trip.endLocation.lng },
-					distance: trip.distance || '',
-					startTime: new Date(trip.startTime).toISOString().slice(0, 16),
-					endTime: new Date(trip.endTime).toISOString().slice(0, 16)
+					...tripResponse.data.trip,
+					startLocation: {
+						lat: tripResponse.data.trip.startLocation.lat,
+						lng: tripResponse.data.trip.startLocation.lng
+					},
+					endLocation: {
+						lat: tripResponse.data.trip.endLocation.lat,
+						lng: tripResponse.data.trip.endLocation.lng
+					},
+					distance: tripResponse.data.trip.distance || '',
+					startTime: new Date(tripResponse.data.trip.startTime).toISOString().slice(0, 16),
+					endTime: new Date(tripResponse.data.trip.endTime).toISOString().slice(0, 16)
 				};
 			} else {
-				const { data } = await axios.get(`/api/trips/${$page.params.id}`, {
-					headers: { Authorization: `Bearer ${appState.user.token}` }
-				});
-				if (data.success) {
-					formData = {
-						...data.trip,
-						startLocation: { lat: data.trip.startLocation.lat, lng: data.trip.startLocation.lng },
-						endLocation: { lat: data.trip.endLocation.lat, lng: data.trip.endLocation.lng },
-						distance: data.trip.distance || '',
-						startTime: new Date(data.trip.startTime).toISOString().slice(0, 16),
-						endTime: new Date(data.trip.endTime).toISOString().slice(0, 16)
-					};
-					appState.trips = [...appState.trips, data.trip];
-				} else {
-					toast.error(data.message || 'Trip not found');
-				}
+				toast.error(tripResponse.data.message || 'Failed to load trip');
 			}
+			vehicles = vehiclesResponse.data.vehicles || [];
+			drivers = driversResponse.data.drivers || [];
 		} catch (error) {
+			console.error('Fetch error:', error.response?.data || error.message);
 			toast.error('Failed to load trip data');
-			console.error('Fetch error:', error);
 		} finally {
 			appState.user.isLoading = false;
 		}
@@ -104,14 +117,13 @@
 			});
 			if (data.success) {
 				toast.success('Trip updated successfully');
-				appState.trips = appState.trips.map((t) => (t._id === $page.params.id ? data.trip : t));
-				goto('/trips');
+				if (browser) goto('/trips');
 			} else {
 				toast.error(data.message || 'Failed to update trip');
 			}
 		} catch (error) {
+			console.error('Update trip error:', error.response?.data || error.message);
 			toast.error(error.response?.data?.message || 'Failed to update trip');
-			console.error('Update error:', error);
 		} finally {
 			appState.user.isLoading = false;
 		}
@@ -138,8 +150,8 @@
 				const distanceInMeters = result.routes[0].legs[0].distance.value;
 				formData.distance = (distanceInMeters / 1000).toFixed(2);
 			} else {
+				console.error('Directions request failed:', status);
 				toast.error('Failed to calculate route');
-				console.error('Directions error:', status);
 			}
 		});
 	}
@@ -162,8 +174,10 @@
 				zoom: 13
 			};
 			const mapElement = document.getElementById('location-map');
-			if (!mapElement) return;
-
+			if (!mapElement) {
+				console.error('Map element not found');
+				return;
+			}
 			map = new google.maps.Map(mapElement, mapOptions);
 			directionsService = new google.maps.DirectionsService();
 			directionsRenderer = new google.maps.DirectionsRenderer();
@@ -268,10 +282,16 @@
 
 			mapInitialized = true;
 		} catch (error) {
+			console.error('Failed to load Google Maps:', error);
 			toast.error('Failed to load map');
-			console.error('Map initialization error:', error);
 		}
 	}
+
+	onMount(() => {
+		if (browser && !appState.user.isLoading) {
+			initializeMap();
+		}
+	});
 
 	$effect(() => {
 		if (!appState.user.isLoading && formData.vehicle && browser && !mapInitialized) {
@@ -280,7 +300,7 @@
 	});
 </script>
 
-<div class="mx-auto max-w-md py-10">
+<div class="mx-auto max-w-md text-xs md:p-6 md:text-base">
 	<h1 class="mb-6 text-3xl font-bold">Edit Trip</h1>
 	{#if appState.user.isLoading && !formData.vehicle}
 		<div class="flex justify-center">
@@ -299,11 +319,10 @@
 					required
 				>
 					<option value="">Select a vehicle</option>
-					{#each appState.vehicles as vehicle}
-						<option value={vehicle._id}>
-							{vehicle.plateNumber} ({vehicle.make}
-							{vehicle.model})
-						</option>
+					{#each vehicles as vehicle}
+						<option value={vehicle._id}
+							>{vehicle.plateNumber} ({vehicle.make} {vehicle.model})</option
+						>
 					{/each}
 				</select>
 			</div>
@@ -311,7 +330,7 @@
 				<label for="driver" class="block text-sm font-medium">Driver</label>
 				<select id="driver" bind:value={formData.driver} class="w-full rounded border p-2" required>
 					<option value="">Select a driver</option>
-					{#each appState.drivers as driver}
+					{#each drivers as driver}
 						<option value={driver._id}>{driver.driverName} ({driver.driverEmail})</option>
 					{/each}
 				</select>
@@ -358,6 +377,7 @@
 				<input
 					id="startTime"
 					bind:value={formData.startTime}
+					min={todayMin}
 					type="datetime-local"
 					class="w-full rounded border p-2"
 					required
@@ -368,6 +388,7 @@
 				<input
 					id="endTime"
 					bind:value={formData.endTime}
+					min={formData.startTime || todayMin}
 					type="datetime-local"
 					class="w-full rounded border p-2"
 					required

@@ -44,7 +44,7 @@
 		filterData();
 	});
 
-	function truncateText(text, maxLength = 20) {
+	function truncateText(text, maxLength = 30) {
 		if (!text || text.length <= maxLength) return text;
 		return text.slice(0, maxLength);
 	}
@@ -225,7 +225,7 @@
 	});
 </script>
 
-<div class="container mx-auto p-6">
+<div class="container mx-auto md:p-6 text-xs md:text-base">
 	<h1 class="mb-6 text-3xl font-bold text-gray-800">Dashboard</h1>
 
 	{#if appState.user.isLoading}
@@ -370,7 +370,7 @@
 			{#if recentTrips.length === 0}
 				<p class="text-gray-500">No recent trips</p>
 			{:else}
-				<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+				<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 					{#each recentTrips as trip}
 						<div class="rounded-lg border border-amber-400 bg-white p-4 shadow-md">
 							<h3 class="font-medium text-blue-600">
@@ -383,7 +383,7 @@
 									{trip.startAddress || 'Loading address...'}
 								{:else}
 									{truncateText(trip.startAddress || 'Loading address...')}
-									{#if (trip.startAddress || 'Loading address...').length > 20}
+									{#if (trip.startAddress || 'Loading address...').length > 30}
 										<!-- svelte-ignore a11y_click_events_have_key_events -->
 										<!-- svelte-ignore a11y_no_static_element_interactions -->
 										<span
@@ -401,7 +401,7 @@
 									{trip.endAddress || 'Loading address...'}
 								{:else}
 									{truncateText(trip.endAddress || 'Loading address...')}
-									{#if (trip.endAddress || 'Loading address...').length > 20}
+									{#if (trip.endAddress || 'Loading address...').length > 30}
 										<!-- svelte-ignore a11y_click_events_have_key_events -->
 										<!-- svelte-ignore a11y_no_static_element_interactions -->
 										<span
