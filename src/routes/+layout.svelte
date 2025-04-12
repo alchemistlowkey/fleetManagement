@@ -9,7 +9,7 @@
 </script>
 
 <svelte:head>
-	<title>Fleet Management</title>
+	<title>FleetSync</title>
 </svelte:head>
 
 <Toaster />
