@@ -225,8 +225,8 @@
 	});
 </script>
 
-<div class="container mx-auto md:p-6 text-xs md:text-base">
-	<h1 class="mb-6 text-3xl font-bold text-gray-800">Dashboard</h1>
+<div class="container mx-auto text-xs md:p-6 md:text-base">
+	<h1 class="mb-6 text-xl font-bold text-gray-800 md:text-3xl">Dashboard</h1>
 
 	{#if appState.user.isLoading}
 		<div class="flex h-64 items-center justify-center">
@@ -252,29 +252,29 @@
 				class="cursor-pointer rounded-lg border border-amber-400 bg-white p-6 shadow-md transition-all hover:scale-105"
 				onclick={() => navigateTo('/drivers')}
 			>
-				<h2 class="text-xl font-semibold text-blue-600">Total Drivers</h2>
-				<p class="mt-2 text-3xl font-bold text-gray-700">{stats.totalDrivers}</p>
-				<p class="text-sm text-gray-500">Active: {activeDrivers.length}</p>
+				<h2 class="text-base font-semibold text-blue-600 md:text-xl">Total Drivers</h2>
+				<p class="mt-2 text-xl font-bold text-gray-700 md:text-3xl">{stats.totalDrivers}</p>
+				<p class="text-gray-500 md:text-sm">Active: {activeDrivers.length}</p>
 			</button>
 			<button
 				class="cursor-pointer rounded-lg border border-amber-400 bg-white p-6 shadow-md transition-all hover:scale-105"
 				onclick={() => navigateTo('/vehicles')}
 			>
-				<h2 class="text-xl font-semibold text-blue-600">Total Vehicles</h2>
-				<p class="mt-2 text-3xl font-bold text-gray-700">{stats.totalVehicles}</p>
-				<p class="text-sm text-gray-500">Available: {stats.availableVehicles}</p>
+				<h2 class="text-base font-semibold text-blue-600 md:text-xl">Total Vehicles</h2>
+				<p class="mt-2 text-xl font-bold text-gray-700 md:text-3xl">{stats.totalVehicles}</p>
+				<p class="text-gray-500 md:text-sm">Available: {stats.availableVehicles}</p>
 			</button>
 			<button
 				class="cursor-pointer rounded-lg border border-amber-400 bg-white p-6 shadow-md transition-all hover:scale-105"
 				onclick={() => navigateTo('/trips')}
 			>
-				<h2 class="text-xl font-semibold text-blue-600">Active Trips</h2>
-				<p class="mt-2 text-3xl font-bold text-gray-700">{stats.activeTrips}</p>
-				<p class="text-sm text-gray-500">Recent: {recentTrips.length}</p>
+				<h2 class="text-base font-semibold text-blue-600 md:text-xl">Active Trips</h2>
+				<p class="mt-2 text-xl font-bold text-gray-700 md:text-3xl">{stats.activeTrips}</p>
+				<p class="text-gray-500 md:text-sm">Recent: {recentTrips.length}</p>
 			</button>
 			{#if appState.user.role === 'Admin'}
-				<div class="rounded-lg border border-amber-400 bg-white p-6 shadow-md">
-					<h2 class="text-xl font-semibold text-blue-600">Quick Actions</h2>
+				<div class="rounded-lg border border-amber-400 bg-white p-6 text-center shadow-md">
+					<h2 class="text-base font-semibold text-blue-600 md:text-xl">Quick Actions</h2>
 					<div class="mt-2 space-y-2">
 						<button
 							onclick={() => navigateTo('/drivers/add')}
@@ -297,7 +297,7 @@
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 			<!-- Unassigned Vehicles -->
 			<div class="rounded-lg border border-amber-400 bg-white p-6 shadow-md">
-				<h2 class="mb-4 text-xl font-semibold text-blue-600">Unassigned Vehicles</h2>
+				<h2 class="mb-4 text-base font-semibold text-blue-600 md:text-xl">Unassigned Vehicles</h2>
 				{#if filteredVehicles.length === 0}
 					<p class="text-gray-500">No unassigned vehicles</p>
 				{:else}
@@ -306,7 +306,7 @@
 							<div class="flex items-center justify-between border-b pb-2">
 								<div>
 									<p class="font-medium text-gray-700">{vehicle.plateNumber}</p>
-									<p class="text-sm text-gray-500">
+									<p class="text-gray-500 md:text-sm">
 										{vehicle.make}
 										{vehicle.model} ({vehicle.year})
 									</p>
@@ -333,7 +333,7 @@
 
 			<!-- Active Drivers -->
 			<div class="rounded-lg border border-amber-400 bg-white p-6 shadow-md">
-				<h2 class="mb-4 text-xl font-semibold text-blue-600">Active Drivers</h2>
+				<h2 class="mb-4 text-base font-semibold text-blue-600 md:text-xl">Active Drivers</h2>
 				{#if filteredDrivers.length === 0}
 					<p class="text-gray-500">No active drivers</p>
 				{:else}
@@ -342,7 +342,7 @@
 							<div class="flex items-center justify-between border-b pb-2">
 								<div>
 									<p class="font-medium text-gray-700">{driver.driverName}</p>
-									<p class="text-sm text-gray-500">
+									<p class="text-gray-500 md:text-sm">
 										{driver.assignedVehicle?.plateNumber || 'No Vehicle'}
 									</p>
 								</div>
@@ -366,7 +366,7 @@
 
 		<!-- Recent Trips -->
 		<div class="my-6">
-			<h2 class="mb-4 text-xl font-semibold text-blue-600">Recent Trips</h2>
+			<h2 class="mb-4 text-base font-semibold text-blue-600 md:text-xl">Recent Trips</h2>
 			{#if recentTrips.length === 0}
 				<p class="text-gray-500">No recent trips</p>
 			{:else}
@@ -377,7 +377,7 @@
 								{trip.vehicle?.plateNumber || 'Unknown Vehicle'} -
 								{trip.driver?.driverName || 'Unknown Driver'}
 							</h3>
-							<p class="mt-2 text-sm text-cyan-700">
+							<p class="mt-2 text-cyan-700 md:text-sm">
 								<strong>From:</strong>
 								{#if showFullAddresses[trip._id]?.start}
 									{trip.startAddress || 'Loading address...'}
@@ -395,7 +395,7 @@
 									{/if}
 								{/if}
 							</p>
-							<p class="my-2 text-sm text-fuchsia-700">
+							<p class="my-2 text-fuchsia-700 md:text-sm">
 								<strong>To:</strong>
 								{#if showFullAddresses[trip._id]?.end}
 									{trip.endAddress || 'Loading address...'}
@@ -418,13 +418,13 @@
 								<div class="mt-2 flex justify-between">
 									<button
 										onclick={() => navigateTo(`/trips/edit/${trip._id}`)}
-										class="text-sm text-sky-400 hover:text-lime-800"
+										class="text-sky-400 hover:text-lime-800 md:text-sm"
 									>
 										Edit
 									</button>
 									<button
 										onclick={() => navigateTo('/trips')}
-										class="text-sm text-blue-600 hover:underline"
+										class="text-blue-600 hover:underline md:text-sm"
 									>
 										View Details
 									</button>

@@ -177,7 +177,7 @@
 							oninput={(e) => handleOtpInput(e, index)}
 							maxlength="1"
 							type="text"
-							class="h-12 w-12 rounded-md border bg-transparent p-2 text-center outline-none"
+							class="md:h-12 md:w-12 h-8 w-8 rounded-md border bg-transparent md:p-2 text-center outline-none"
 							required
 						/>
 					{/each}
